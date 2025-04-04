@@ -1,0 +1,119 @@
+openapi: 3.0.0
+info:
+  title: Phone Number Insight API
+  version: 1.0.0
+  description: API for retrieving comprehensive information about phone numbers using Vonage Number Insight
+paths:
+  /number-insight:
+    post:
+      summary: Get comprehensive phone number insights
+      description: |
+        Provides detailed information about a phone number including:
+        - Basic number information (country, format)
+        - Carrier details
+        - SIM swap detection
+        - Roaming status
+        - Porting information
+        - Device information
+        - Risk assessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phoneNumber
+              properties:
+                phoneNumber:
+                  type: string
+                  description: Phone number in E.164 format (e.g., +12025550123)
+                  example: "+12025550123"
+      responses:
+        '200':
+          description: Successful response with phone number insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  phoneNumber:
+                    type: string
+                    description: The phone number that was analyzed
+                    example: "+12025550123"
+                  countryName:
+                    type: string
+                    description: The country the phone number belongs to
+                    example: "United States"
+                  carrier:
+                    type: string
+                    description: The carrier/network operator name
+                    example: "Verizon"
+                  isValid:
+                    type: boolean
+                    description: Whether the phone number is valid
+                    example: true
+                  isReachable:
+                    type: boolean
+                    description: Whether the phone number is currently reachable
+                    example: true
+                  simSwapped:
+                    type: boolean
+                    description: Whether the SIM card has been recently swapped
+                    example: false
+                  daysSinceSimSwap:
+                    type: integer
+                    description: Number of days since the last SIM swap (0 if no swap detected)
+                    example: 0
+                  isRoaming:
+                    type: boolean
+                    description: Whether the phone is currently roaming
+                    example: false
+                  roamingCountry:
+                    type: string
+                    description: The country where the phone is roaming (if applicable)
+                    example: "CA"
+                  isPorted:
+                    type: boolean
+                    description: Whether the phone number has been ported to another carrier
+                    example: false
+                  riskScore:
+                    type: integer
+                    description: Risk score from 0 (low risk) to 100 (high risk)
+                    example: 10
+                  riskRecommendation:
+                    type: string
+                    description: Recommendation based on risk assessment
+                    example: "allow"
+                  deviceInfo:
+                    type: string
+                    description: Information about the device associated with the number
+                    example: "Apple iPhone 13"
+                  callerName:
+                    type: string
+                    description: The registered name of the caller (if available)
+                    example: "John Smith"
+                  callerType:
+                    type: string
+                    description: The type of caller (consumer, business, etc.)
+                    example: "consumer"
+        '400':
+          description: Bad request - invalid phone number format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Phone number must be in E.164 format (e.g., +12025550123)"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to retrieve number insights"
