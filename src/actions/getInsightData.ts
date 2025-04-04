@@ -7,12 +7,8 @@ import Joi from 'joi';
  * Handler for getting comprehensive phone number insights
  * This function provides detailed information about a phone number including:
  * - Basic number information (country, format)
- * - Carrier details
- * - SIM swap detection
- * - Roaming status
- * - Porting information
- * - Device information
- * - Risk assessment
+ * - Carrier details (current and original)
+ * - Validity and reachability
  */
 export const handler = async (event: any, context: Context): Promise<any> => {
   console.log('Event received:', JSON.stringify(event, null, 2));
@@ -77,19 +73,29 @@ export const handler = async (event: any, context: Context): Promise<any> => {
         {
           phoneNumber: insightData.phoneNumber,
           countryName: insightData.basicInfo.countryName,
-          carrier: insightData.carrierInfo.name,
+          currentCarrier: {
+            name: insightData.carrierInfo.name,
+            country: insightData.carrierInfo.country,
+            networkType: insightData.carrierInfo.networkType,
+            networkCode: insightData.carrierInfo.networkCode
+          },
+          originalCarrier: {
+            name: insightData.advancedDetails.portingInfo.originalNetwork,
+            country: insightData.rawData.original_carrier?.country || 'Unknown',
+            networkType: insightData.rawData.original_carrier?.network_type || 'Unknown',
+            networkCode: insightData.rawData.original_carrier?.network_code || 'Unknown'
+          },
           isValid: insightData.validity.valid,
           isReachable: insightData.validity.reachable,
-          simSwapped: insightData.simSwapInfo.swapped,
-          daysSinceSimSwap: insightData.simSwapInfo.daysSinceSwap,
+          isPorted: insightData.validity.ported,
           isRoaming: insightData.validity.roaming,
           roamingCountry: insightData.advancedDetails.roamingInfo.countryCode,
-          isPorted: insightData.validity.ported,
-          riskScore: insightData.riskScore.score,
-          riskRecommendation: insightData.riskScore.recommendation,
-          deviceInfo: `${insightData.advancedDetails.deviceInfo.deviceBrand} ${insightData.advancedDetails.deviceInfo.deviceModel}`,
-          callerName: insightData.advancedDetails.callerIdentity.callerName,
-          callerType: insightData.advancedDetails.callerIdentity.callerType
+          carrierChanged: insightData.carrierInfo.name !== insightData.advancedDetails.portingInfo.originalNetwork &&
+                         insightData.advancedDetails.portingInfo.originalNetwork !== 'unknown',
+          fraudRisk: {
+            score: insightData.riskScore.score,
+            recommendation: insightData.riskScore.recommendation
+          }
         }
       );
     } else {

@@ -1,28 +1,22 @@
 /**
- * Formats responses for Bedrock AI Agent actions
+ * Utility functions for formatting responses for Bedrock AI agents
  */
-
-interface ResponseOptions {
-  statusCode: number;
-  body: any;
-  headers?: Record<string, string>;
-}
 
 /**
- * Format a successful response for Bedrock AI Agent
+ * Format a successful response for Bedrock AI agents
  * 
  * @param actionGroup - The action group name
- * @param apiPath - The API path that was called
- * @param httpMethod - The HTTP method used
- * @param responseData - The data to return
- * @returns Formatted response for Bedrock AI Agent
+ * @param apiPath - The API path
+ * @param httpMethod - The HTTP method
+ * @param responseBody - The response body
+ * @returns Formatted response for Bedrock AI agent
  */
-export const formatSuccess = (
+export function formatSuccess(
   actionGroup: string,
   apiPath: string,
   httpMethod: string,
-  responseData: any
-) => {
+  responseBody: any
+) {
   return {
     messageVersion: '1.0',
     response: {
@@ -31,30 +25,29 @@ export const formatSuccess = (
       httpMethod,
       httpStatusCode: 200,
       responseBody: {
-        contentType: 'application/json',
-        content: JSON.stringify(responseData)
+        application_json: JSON.stringify(responseBody)
       }
     }
   };
-};
+}
 
 /**
- * Format an error response for Bedrock AI Agent
+ * Format an error response for Bedrock AI agents
  * 
  * @param actionGroup - The action group name
- * @param apiPath - The API path that was called
- * @param httpMethod - The HTTP method used
- * @param statusCode - HTTP status code
- * @param errorMessage - Error message
- * @returns Formatted error response for Bedrock AI Agent
+ * @param apiPath - The API path
+ * @param httpMethod - The HTTP method
+ * @param statusCode - The HTTP status code
+ * @param errorMessage - The error message
+ * @returns Formatted error response for Bedrock AI agent
  */
-export const formatError = (
+export function formatError(
   actionGroup: string,
   apiPath: string,
   httpMethod: string,
   statusCode: number,
   errorMessage: string
-) => {
+) {
   return {
     messageVersion: '1.0',
     response: {
@@ -63,30 +56,10 @@ export const formatError = (
       httpMethod,
       httpStatusCode: statusCode,
       responseBody: {
-        contentType: 'application/json',
-        content: JSON.stringify({
+        application_json: JSON.stringify({
           error: errorMessage
         })
       }
     }
   };
-};
-
-/**
- * Format a standard HTTP response (for direct API calls)
- * 
- * @param options - Response options
- * @returns Formatted HTTP response
- */
-export const formatHttpResponse = (options: ResponseOptions) => {
-  return {
-    statusCode: options.statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Credentials': true,
-      ...options.headers
-    },
-    body: JSON.stringify(options.body)
-  };
-};
+}

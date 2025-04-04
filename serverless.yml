@@ -10,72 +10,70 @@ provider:
   environment:
     VONAGE_API_KEY: ${env:VONAGE_API_KEY}
     VONAGE_API_SECRET: ${env:VONAGE_API_SECRET}
-    VONAGE_APPLICATION_ID: ${env:VONAGE_APPLICATION_ID}
-    VONAGE_PRIVATE_KEY: ${env:VONAGE_PRIVATE_KEY}
+    NODE_ENV: ${self:provider.stage}
   iam:
     role:
       statements:
         - Effect: Allow
           Action:
-            - bedrock:*
-          Resource: '*'
-        - Effect: Allow
-          Action:
             - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
-          Resource: '*'
+          Resource: arn:aws:logs:*:*:*
 
 plugins:
-  - serverless-plugin-typescript
+  - serverless-esbuild
   - serverless-offline
 
-package:
-  individually: true
-  excludeDevDependencies: true
+custom:
+  esbuild:
+    bundle: true
+    minify: true
+    sourcemap: true
+    target: 'node18'
+    platform: 'node'
+    concurrency: 10
+    external:
+      - 'aws-sdk'
 
 functions:
-  sendSMS:
-    handler: src/actions/sendSMS.handler
-    description: Send SMS messages via Vonage API
-    events:
-      - http:
-          path: /send-sms
-          method: post
-          cors: true
-  
-  makeVoiceCall:
-    handler: src/actions/makeVoiceCall.handler
-    description: Initiate voice calls via Vonage API
-    events:
-      - http:
-          path: /make-call
-          method: post
-          cors: true
-  
-  verifyNumber:
-    handler: src/actions/verifyNumber.handler
-    description: Verify phone numbers via Vonage API
-    events:
-      - http:
-          path: /verify-number
-          method: post
-          cors: true
-  
-  checkVerification:
-    handler: src/actions/checkVerification.handler
-    description: Check verification status via Vonage API
-    events:
-      - http:
-          path: /check-verification
-          method: post
-          cors: true
-
-  getInsightData:
+  getNumberInsight:
     handler: src/actions/getInsightData.handler
-    description: Get number insights via Vonage API
     events:
       - http:
-          path: /number-insight
+          path: number-insight
           method: post
           cors: true
+          request:
+            schemas:
+              application/json:
+                schema:
+                  type: object
+                  required:
+                    - phoneNumber
+                  properties:
+                    phoneNumber:
+                      type: string
+                      pattern: '^\+[1-9]\d{1,14}$'
+                      description: 'Phone number in E.164 format (e.g., +12025550123)'
+
+resources:
+  Resources:
+    GatewayResponseDefault4XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
+    GatewayResponseDefault5XX:
+      Type: 'AWS::ApiGateway::GatewayResponse'
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: DEFAULT_5XX
+        RestApiId:
+          Ref: ApiGatewayRestApi

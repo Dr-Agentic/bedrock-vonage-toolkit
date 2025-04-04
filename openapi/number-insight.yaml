@@ -2,20 +2,17 @@ openapi: 3.0.0
 info:
   title: Phone Number Insight API
   version: 1.0.0
-  description: API for retrieving comprehensive information about phone numbers using Vonage Number Insight
+  description: API for retrieving information about phone numbers using Vonage Number Insight
 paths:
   /number-insight:
     post:
-      summary: Get comprehensive phone number insights
+      summary: Get phone number insights
       description: |
-        Provides detailed information about a phone number including:
+        Provides information about a phone number including:
         - Basic number information (country, format)
-        - Carrier details
-        - SIM swap detection
-        - Roaming status
-        - Porting information
-        - Device information
-        - Risk assessment
+        - Carrier details (current and original)
+        - Validity and reachability status
+        - Fraud risk indicators
       requestBody:
         required: true
         content:
@@ -45,10 +42,46 @@ paths:
                     type: string
                     description: The country the phone number belongs to
                     example: "United States"
-                  carrier:
-                    type: string
-                    description: The carrier/network operator name
-                    example: "Verizon"
+                  currentCarrier:
+                    type: object
+                    description: Information about the current carrier
+                    properties:
+                      name:
+                        type: string
+                        description: The name of the current carrier
+                        example: "Verizon"
+                      country:
+                        type: string
+                        description: The country code of the current carrier
+                        example: "US"
+                      networkType:
+                        type: string
+                        description: The type of network (mobile, landline, etc.)
+                        example: "mobile"
+                      networkCode:
+                        type: string
+                        description: The network code of the current carrier
+                        example: "310004"
+                  originalCarrier:
+                    type: object
+                    description: Information about the original carrier (before porting)
+                    properties:
+                      name:
+                        type: string
+                        description: The name of the original carrier
+                        example: "AT&T"
+                      country:
+                        type: string
+                        description: The country code of the original carrier
+                        example: "US"
+                      networkType:
+                        type: string
+                        description: The type of network (mobile, landline, etc.)
+                        example: "mobile"
+                      networkCode:
+                        type: string
+                        description: The network code of the original carrier
+                        example: "310410"
                   isValid:
                     type: boolean
                     description: Whether the phone number is valid
@@ -57,14 +90,10 @@ paths:
                     type: boolean
                     description: Whether the phone number is currently reachable
                     example: true
-                  simSwapped:
+                  isPorted:
                     type: boolean
-                    description: Whether the SIM card has been recently swapped
+                    description: Whether the phone number has been ported to another carrier
                     example: false
-                  daysSinceSimSwap:
-                    type: integer
-                    description: Number of days since the last SIM swap (0 if no swap detected)
-                    example: 0
                   isRoaming:
                     type: boolean
                     description: Whether the phone is currently roaming
@@ -73,30 +102,22 @@ paths:
                     type: string
                     description: The country where the phone is roaming (if applicable)
                     example: "CA"
-                  isPorted:
+                  carrierChanged:
                     type: boolean
-                    description: Whether the phone number has been ported to another carrier
+                    description: Whether the carrier has changed (ported to a different carrier)
                     example: false
-                  riskScore:
-                    type: integer
-                    description: Risk score from 0 (low risk) to 100 (high risk)
-                    example: 10
-                  riskRecommendation:
-                    type: string
-                    description: Recommendation based on risk assessment
-                    example: "allow"
-                  deviceInfo:
-                    type: string
-                    description: Information about the device associated with the number
-                    example: "Apple iPhone 13"
-                  callerName:
-                    type: string
-                    description: The registered name of the caller (if available)
-                    example: "John Smith"
-                  callerType:
-                    type: string
-                    description: The type of caller (consumer, business, etc.)
-                    example: "consumer"
+                  fraudRisk:
+                    type: object
+                    description: Fraud risk assessment
+                    properties:
+                      score:
+                        type: number
+                        description: Risk score (0-100, higher means more risky)
+                        example: 10
+                      recommendation:
+                        type: string
+                        description: Recommendation based on risk assessment
+                        example: "allow"
         '400':
           description: Bad request - invalid phone number format
           content:
