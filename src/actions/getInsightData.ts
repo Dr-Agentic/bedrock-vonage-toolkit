@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
 import { VonageService } from '../services/vonageService';
-import { formatSuccess, formatError } from '../utils/responseFormatter';
+import { formatSuccessResponse as formatSuccess, formatErrorResponse as formatError } from '../utils/responseFormatter';
 import Joi from 'joi';
 
 /**

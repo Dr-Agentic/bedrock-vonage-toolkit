@@ -61,6 +61,60 @@ functions:
                       pattern: '^\+[1-9]\d{1,14}$'
                       description: 'Phone number in E.164 format (e.g., +12025550123)'
                       
+  sendSms:
+    handler: src/actions/sendSms.handler
+    events:
+      - http:
+          path: send-sms
+          method: post
+          cors: true
+          request:
+            schemas:
+              application/json:
+                schema:
+                  type: object
+                  required:
+                    - from
+                    - to
+                    - text
+                  properties:
+                    from:
+                      type: string
+                      description: 'Sender ID or phone number (must be enabled in your Vonage account)'
+                    to:
+                      type: string
+                      pattern: '^\+[1-9]\d{1,14}$'
+                      description: 'Recipient phone number in E.164 format (e.g., +12025550123)'
+                    text:
+                      type: string
+                      description: 'Message content'
+                    type:
+                      type: string
+                      enum: ['text', 'unicode', 'binary']
+                      default: 'text'
+                      description: 'Message type'
+                    ttl:
+                      type: integer
+                      minimum: 300000
+                      maximum: 259200000
+                      description: 'Message time-to-live in milliseconds (5 minutes to 3 days)'
+                    statusReportReq:
+                      type: boolean
+                      default: false
+                      description: 'Request delivery receipt'
+                    webhookUrl:
+                      type: string
+                      description: 'URL for delivery receipt webhook'
+                    webhookMethod:
+                      type: string
+                      enum: ['GET', 'POST']
+                      default: 'POST'
+                      description: 'HTTP method for delivery receipt webhook'
+                    clientRef:
+                      type: string
+                      maxLength: 40
+                      description: 'Client reference for the message'
+                      
   requestVerification:
     handler: src/actions/requestVerification.handler
     events:
