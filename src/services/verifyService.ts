@@ -1,4 +1,4 @@
-import vonageClient, { getVonageClient } from '../config/vonage';
+import vonageClient from '../config/vonage';
 
 /**
  * Service for interacting with Vonage Verify API
@@ -31,8 +31,7 @@ export class VerifyService {
           brand,
           code_length: codeLength,
           lg: locale,
-          workflow_id: channel === 'whatsapp' ? 6 : undefined, // Use WhatsApp workflow if selected
-          channel: channel === 'whatsapp' ? undefined : channel, // Only set channel for SMS or voice
+          // Don't include channel parameter as it's not supported in this version
         }, (err: any, result: any) => {
           if (err) {
             console.error('Error requesting verification:', err);

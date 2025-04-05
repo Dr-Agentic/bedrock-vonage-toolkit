@@ -1,199 +1,214 @@
 # Bedrock Vonage Toolkit
 
-A toolkit for integrating Vonage APIs with AWS Bedrock AI agents.
+This toolkit provides integration between AWS Bedrock and Vonage APIs for phone number verification, SMS messaging, and number insights.
 
-## Features
+## Table of Contents
+- [Setup](#setup)
+- [Number Insight API](#number-insight-api)
+- [Verify API](#verify-api)
+- [SMS API](#sms-api)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
 
-- Phone number validation and insights using Vonage Number Insight API
-- Phone number verification using Vonage Verify API
-- Carrier detection for fraud prevention
-- Risk assessment for phone numbers
-- Easy integration with AWS Bedrock AI agents
+## Setup
 
-## Installation
+1. Install dependencies:
+   ```
+   npm install
+   ```
+
+2. Create a `.env` file with your Vonage credentials:
+   ```
+   VONAGE_API_KEY=your_api_key
+   VONAGE_API_SECRET=your_api_secret
+   ```
+
+3. For AWS deployment, set the following environment variable:
+   ```
+   VONAGE_CREDENTIALS_SECRET_NAME=your-secret-name
+   ```
+
+## Number Insight API
+
+The Number Insight API provides information about phone numbers.
+
+### Features
+- Validate phone numbers
+- Get carrier information
+- Check if a number is mobile, landline, or VoIP
+
+### Usage
+
+```javascript
+const { getVonageClient } = require('./src/config/vonage');
+
+// Get advanced insights for a phone number
+async function getNumberInsights(phoneNumber) {
+  return new Promise((resolve, reject) => {
+    const vonage = await getVonageClient();
+    vonage.numberInsights.advancedLookup(phoneNumber, (error, result) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    });
+  });
+}
+
+// Example usage
+const insights = await getNumberInsights('+1234567890');
+console.log(insights);
+```
+
+### Testing
 
 ```bash
-npm install
+node test-number-insight.js +1234567890
 ```
 
-## Configuration
+## Verify API
 
-### Using AWS Secrets Manager (Recommended for Production)
+The Verify API allows you to verify that a user has access to a specific phone number through SMS or voice verification.
 
-1. Create a secret in AWS Secrets Manager:
+### Features
+- Send verification codes via SMS
+- Check verification codes
+- Cancel verification requests
+
+### Usage
+
+```javascript
+const { VerifyService } = require('./src/services/verifyService');
+const verifyService = new VerifyService();
+
+// Request verification
+const request = await verifyService.requestVerification(
+  '+1234567890',
+  'YourBrandName'
+);
+
+// Check verification code
+const check = await verifyService.checkVerification(
+  request.requestId,
+  '1234'  // code received by user
+);
+
+// Cancel verification
+const cancel = await verifyService.cancelVerification(request.requestId);
+```
+
+### Testing
 
 ```bash
-aws secretsmanager create-secret \
-    --name bedrock-vonage-toolkit/credentials \
-    --description "Vonage API credentials for Bedrock Vonage Toolkit" \
-    --secret-string '{"VONAGE_API_KEY":"your_api_key","VONAGE_API_SECRET":"your_api_secret"}'
+# Request a verification code
+node test-verify-direct.js request
+
+# Check a verification code
+node test-verify-direct.js check <requestId> <code>
+
+# Cancel a verification request
+node test-verify-direct.js cancel <requestId>
 ```
 
-2. Make sure your AWS role has permission to access this secret.
+### Important Notes
 
-### Using Environment Variables (Development Only)
+- The Vonage Verify API has rate limits and restrictions on concurrent verifications to the same number
+- The toolkit uses Vonage SDK v2.11.2 which has specific parameter requirements
+- The `channel` parameter is not supported in this version of the SDK
 
-Create a `.env` file with your Vonage API credentials:
+## SMS API
 
+The SMS API allows you to send text messages to users.
+
+### Features
+- Send SMS messages
+- Receive delivery receipts
+- Support for Unicode characters
+
+### Usage
+
+```javascript
+const { getVonageClient } = require('./src/config/vonage');
+
+// Send an SMS
+async function sendSms(to, text, from) {
+  return new Promise((resolve, reject) => {
+    const vonage = await getVonageClient();
+    vonage.message.sendSms(from, to, text, {}, (error, response) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(response);
+      }
+    });
+  });
+}
+
+// Example usage
+const result = await sendSms(
+  '+1234567890',
+  'Your message here',
+  'YourBrandName'
+);
+console.log(result);
 ```
-VONAGE_API_KEY=your_api_key
-VONAGE_API_SECRET=your_api_secret
-```
 
-## Deployment
+### Testing
 
 ```bash
-npm run deploy
+node test-sms.js +1234567890 "Your test message"
 ```
 
-## Usage
+## Troubleshooting
 
-The toolkit provides a serverless API that can be called from AWS Bedrock AI agents.
+### Common Issues
 
-### Number Insight API
+#### API Credentials
+- Ensure your Vonage API key and secret are correct
+- Check that credentials are properly loaded from environment variables or AWS Secrets Manager
 
-```json
-POST /number-insight
-{
-  "phoneNumber": "+12025550123"
-}
+#### Rate Limits
+- Vonage APIs have rate limits that may affect your usage
+- For Verify API: Avoid sending multiple verification requests to the same number in quick succession
+
+#### SDK Version Compatibility
+- This toolkit uses Vonage SDK v2.11.2
+- Some parameters may not be supported in this version (e.g., 'channel' in Verify API)
+
+### Debugging
+
+Enable debug logging by setting:
+```
+DEBUG=vonage:* npm start
 ```
 
-Response:
+For AWS Lambda deployments, check CloudWatch logs for detailed error information.
 
-```json
-{
-  "phoneNumber": "+12025550123",
-  "basicInfo": {
-    "internationalFormat": "+12025550123",
-    "nationalFormat": "(202) 555-0123",
-    "countryCode": "US",
-    "countryName": "United States",
-    "countryPrefix": "1"
-  },
-  "carrierInfo": {
-    "name": "Verizon",
-    "country": "US",
-    "networkType": "mobile",
-    "networkCode": "310004"
-  },
-  "validity": {
-    "valid": true,
-    "reachable": true,
-    "ported": false,
-    "roaming": false
-  },
-  "advancedDetails": {
-    "roamingInfo": {
-      "status": "not_roaming",
-      "countryCode": "US",
-      "networkName": "Verizon",
-      "networkCode": "310004"
-    },
-    "portingInfo": {
-      "status": "not_ported",
-      "originalNetwork": "Verizon"
-    },
-    "callerIdentity": {
-      "callerName": "John Doe",
-      "callerType": "consumer",
-      "firstName": "John",
-      "lastName": "Doe"
-    }
-  },
-  "riskScore": {
-    "score": 10,
-    "recommendation": "allow"
-  },
-  "timestamp": "2023-04-03T21:00:00.000Z"
-}
-```
+## AWS Integration
 
-### Verify API
+This toolkit is designed to work seamlessly with AWS services:
 
-#### Request Verification
+### Secrets Management
+- API credentials are stored in AWS Secrets Manager
+- Access is managed through IAM roles
 
-```json
-POST /verify-request
-{
-  "phoneNumber": "+12025550123",
-  "brand": "MyApp",
-  "channel": "sms"
-}
-```
+### Lambda Integration
+- The toolkit can be deployed as Lambda functions
+- API Gateway can be used to expose endpoints
 
-Response:
+### Bedrock Integration
+- The toolkit can be used with AWS Bedrock for AI-powered communications
+- Example use cases include AI-generated SMS messages and verification workflows
 
-```json
-{
-  "requestId": "abcdef0123456789abcdef0123456789",
-  "status": {
-    "code": "0",
-    "message": "Success"
-  },
-  "phoneNumber": "+12025550123",
-  "message": "Verification code sent to +12025550123",
-  "nextStep": "Check the verification code using the /verify-check endpoint with the requestId and code"
-}
-```
+## Contributing
 
-#### Check Verification Code
-
-```json
-POST /verify-check
-{
-  "requestId": "abcdef0123456789abcdef0123456789",
-  "code": "1234"
-}
-```
-
-Response:
-
-```json
-{
-  "requestId": "abcdef0123456789abcdef0123456789",
-  "status": {
-    "code": "0",
-    "message": "Success"
-  },
-  "verified": true,
-  "message": "Phone number successfully verified"
-}
-```
-
-#### Cancel Verification
-
-```json
-POST /verify-cancel
-{
-  "requestId": "abcdef0123456789abcdef0123456789"
-}
-```
-
-Response:
-
-```json
-{
-  "requestId": "abcdef0123456789abcdef0123456789",
-  "status": {
-    "code": "0",
-    "message": "Success"
-  },
-  "cancelled": true,
-  "message": "Verification request successfully cancelled"
-}
-```
-
-## Integration with AWS Bedrock Agents
-
-This toolkit is designed to be easily integrated with AWS Bedrock Agents. You can use the API endpoints as action groups in your Bedrock Agent to:
-
-1. Validate phone numbers and get insights
-2. Send verification codes to users
-3. Verify codes entered by users
-
-For more information on integrating with Bedrock Agents, see the [examples](./examples) directory.
+Contributions are welcome! Please follow these steps:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.

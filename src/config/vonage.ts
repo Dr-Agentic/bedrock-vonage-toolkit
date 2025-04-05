@@ -1,6 +1,7 @@
+import { Auth } from '@vonage/auth';
 import { Vonage } from '@vonage/server-sdk';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Verify } from '@vonage/verify';
+import { SMS } from '@vonage/sms';
 import dotenv from 'dotenv';
 import { SecretsManager } from 'aws-sdk';
 
@@ -46,21 +47,54 @@ async function getVonageCredentials(): Promise<{ apiKey: string; apiSecret: stri
   }
 }
 
-// Initialize Vonage client with placeholder values
-// Will be updated with actual credentials before use
-let vonageClient: any = null;
+// Initialize clients
+let vonageClient: Vonage | null = null;
+let verifyClient: Verify | null = null;
+let smsClient: SMS | null = null;
 
-// Export an async function to get the initialized client
+// Get initialized Vonage client
 export async function getVonageClient() {
   if (!vonageClient) {
     const credentials = await getVonageCredentials();
-    vonageClient = new (Vonage as any)({
+    const auth = new Auth({
       apiKey: credentials.apiKey,
       apiSecret: credentials.apiSecret
     });
-    console.log('Vonage client initialized successfully with API key and secret');
+    
+    vonageClient = new Vonage(auth);
+    console.log('Vonage client initialized successfully');
   }
   return vonageClient;
+}
+
+// Get initialized Verify client
+export async function getVerifyClient() {
+  if (!verifyClient) {
+    const credentials = await getVonageCredentials();
+    const auth = new Auth({
+      apiKey: credentials.apiKey,
+      apiSecret: credentials.apiSecret
+    });
+    
+    verifyClient = new Verify(auth);
+    console.log('Verify client initialized successfully');
+  }
+  return verifyClient;
+}
+
+// Get initialized SMS client
+export async function getSmsClient() {
+  if (!smsClient) {
+    const credentials = await getVonageCredentials();
+    const auth = new Auth({
+      apiKey: credentials.apiKey,
+      apiSecret: credentials.apiSecret
+    });
+    
+    smsClient = new SMS(auth);
+    console.log('SMS client initialized successfully');
+  }
+  return smsClient;
 }
 
 // For backward compatibility with existing code
@@ -68,21 +102,69 @@ export default {
   numberInsights: {
     advancedLookup: async (number: string) => {
       const client = await getVonageClient();
-      return client.numberInsights.advancedLookup(number);
+      return client.numberInsight.advancedInsightAsync({ number });
     }
   },
   verify: {
     request: async (params: any, callback: any) => {
-      const client = await getVonageClient();
-      return client.verify.request(params, callback);
+      try {
+        const verify = await getVerifyClient();
+        const result = await verify.request({
+          number: params.number,
+          brand: params.brand,
+          codeLength: params.code_length,
+          locale: params.lg,
+          workflowId: params.workflow_id,
+          channel: params.channel
+        });
+        callback(null, result);
+      } catch (error) {
+        callback(error, null);
+      }
     },
     check: async (params: any, callback: any) => {
-      const client = await getVonageClient();
-      return client.verify.check(params, callback);
+      try {
+        const verify = await getVerifyClient();
+        const result = await verify.check({
+          requestId: params.request_id,
+          code: params.code
+        });
+        callback(null, result);
+      } catch (error) {
+        callback(error, null);
+      }
     },
     control: async (params: any, callback: any) => {
-      const client = await getVonageClient();
-      return client.verify.control(params, callback);
+      try {
+        const verify = await getVerifyClient();
+        const result = await verify.cancel({
+          requestId: params.request_id
+        });
+        callback(null, result);
+      } catch (error) {
+        callback(error, null);
+      }
+    }
+  },
+  message: {
+    sendSms: async (from: string, to: string, text: string, options: any, callback: any) => {
+      try {
+        const sms = await getSmsClient();
+        const result = await sms.send({
+          from,
+          to,
+          text,
+          type: options.type,
+          ttl: options.ttl,
+          statusReportReq: options.status_report_req,
+          callback: options.callback,
+          callbackMethod: options['callback-method'],
+          clientRef: options.client_ref
+        });
+        callback(null, result);
+      } catch (error) {
+        callback(error, null);
+      }
     }
   }
 };
