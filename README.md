@@ -1,109 +1,184 @@
 # Bedrock Vonage Toolkit
 
-A toolkit for integrating Vonage Number Insight API with AWS Bedrock AI agents.
-
-## Overview
-
-This toolkit provides a serverless API that allows AWS Bedrock AI agents to access Vonage's Number Insight API for phone number validation, carrier detection, and fraud prevention. The toolkit includes:
-
-1. Lambda functions for handling API requests
-2. Integration with Vonage Number Insight API
-3. OpenAPI specification for Bedrock AI agent integration
-4. Local testing utilities
+A toolkit for integrating Vonage APIs with AWS Bedrock AI agents.
 
 ## Features
 
-- **Phone Number Validation**: Verify if a phone number is valid and reachable
-- **Carrier Detection**: Identify the carrier/network operator of a phone number
-- **Porting Status**: Check if a phone number has been ported between carriers
-- **Roaming Detection**: Determine if a phone number is currently roaming
-- **Risk Assessment**: Get risk scores and recommendations for phone numbers
+- Phone number validation and insights using Vonage Number Insight API
+- Phone number verification using Vonage Verify API
+- Carrier detection for fraud prevention
+- Risk assessment for phone numbers
+- Easy integration with AWS Bedrock AI agents
 
-## Prerequisites
+## Installation
 
-- Node.js 18+
-- AWS CLI configured with appropriate permissions
-- Vonage API account with API key and secret
+```bash
+npm install
+```
 
-## Setup
+## Configuration
 
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Create a `.env` file with your Vonage API credentials:
-   ```
-   VONAGE_API_KEY=your_api_key
-   VONAGE_API_SECRET=your_api_secret
-   ```
+Create a `.env` file with your Vonage API credentials:
 
-## Local Testing
-
-To test the Vonage Number Insight functionality locally:
-
-1. Set a test phone number in your `.env` file:
-   ```
-   TEST_PHONE_NUMBER=+1234567890
-   ```
-2. Run the local test script:
-   ```
-   npx ts-node src/local-test.ts
-   ```
+```
+VONAGE_API_KEY=your_api_key
+VONAGE_API_SECRET=your_api_secret
+```
 
 ## Deployment
 
-To deploy the toolkit to AWS:
-
-```
+```bash
 npm run deploy
 ```
 
-This will deploy the Lambda functions and API Gateway endpoints using the Serverless Framework.
+## Usage
 
-## Integration with Bedrock AI Agents
+The toolkit provides a serverless API that can be called from AWS Bedrock AI agents.
 
-To integrate this toolkit with a Bedrock AI agent:
+### Number Insight API
 
-1. Use the OpenAPI specification in `openapi/number-insight.yaml` to create an action group in your Bedrock agent
-2. Configure the API endpoint to point to your deployed API Gateway endpoint
-3. Test the integration using the Bedrock agent console
-
-## API Reference
-
-### Phone Number Insight
-
-**Endpoint**: `POST /number-insight`
-
-**Request Body**:
 ```json
+POST /number-insight
 {
-  "phoneNumber": "+1234567890"
+  "phoneNumber": "+12025550123"
 }
 ```
 
-**Response**:
+Response:
+
 ```json
 {
-  "phoneNumber": "+1234567890",
-  "countryName": "United States",
-  "carrier": "Verizon",
-  "isValid": true,
-  "isReachable": true,
-  "isPorted": false,
-  "isRoaming": false,
-  "roamingCountry": "US",
-  "networkType": "mobile",
-  "originalCarrier": "Verizon"
+  "phoneNumber": "+12025550123",
+  "basicInfo": {
+    "internationalFormat": "+12025550123",
+    "nationalFormat": "(202) 555-0123",
+    "countryCode": "US",
+    "countryName": "United States",
+    "countryPrefix": "1"
+  },
+  "carrierInfo": {
+    "name": "Verizon",
+    "country": "US",
+    "networkType": "mobile",
+    "networkCode": "310004"
+  },
+  "validity": {
+    "valid": true,
+    "reachable": true,
+    "ported": false,
+    "roaming": false
+  },
+  "advancedDetails": {
+    "roamingInfo": {
+      "status": "not_roaming",
+      "countryCode": "US",
+      "networkName": "Verizon",
+      "networkCode": "310004"
+    },
+    "portingInfo": {
+      "status": "not_ported",
+      "originalNetwork": "Verizon"
+    },
+    "callerIdentity": {
+      "callerName": "John Doe",
+      "callerType": "consumer",
+      "firstName": "John",
+      "lastName": "Doe"
+    }
+  },
+  "riskScore": {
+    "score": 10,
+    "recommendation": "allow"
+  },
+  "timestamp": "2023-04-03T21:00:00.000Z"
 }
 ```
+
+### Verify API
+
+#### Request Verification
+
+```json
+POST /verify-request
+{
+  "phoneNumber": "+12025550123",
+  "brand": "MyApp",
+  "channel": "sms"
+}
+```
+
+Response:
+
+```json
+{
+  "requestId": "abcdef0123456789abcdef0123456789",
+  "status": {
+    "code": "0",
+    "message": "Success"
+  },
+  "phoneNumber": "+12025550123",
+  "message": "Verification code sent to +12025550123",
+  "nextStep": "Check the verification code using the /verify-check endpoint with the requestId and code"
+}
+```
+
+#### Check Verification Code
+
+```json
+POST /verify-check
+{
+  "requestId": "abcdef0123456789abcdef0123456789",
+  "code": "1234"
+}
+```
+
+Response:
+
+```json
+{
+  "requestId": "abcdef0123456789abcdef0123456789",
+  "status": {
+    "code": "0",
+    "message": "Success"
+  },
+  "verified": true,
+  "message": "Phone number successfully verified"
+}
+```
+
+#### Cancel Verification
+
+```json
+POST /verify-cancel
+{
+  "requestId": "abcdef0123456789abcdef0123456789"
+}
+```
+
+Response:
+
+```json
+{
+  "requestId": "abcdef0123456789abcdef0123456789",
+  "status": {
+    "code": "0",
+    "message": "Success"
+  },
+  "cancelled": true,
+  "message": "Verification request successfully cancelled"
+}
+```
+
+## Integration with AWS Bedrock Agents
+
+This toolkit is designed to be easily integrated with AWS Bedrock Agents. You can use the API endpoints as action groups in your Bedrock Agent to:
+
+1. Validate phone numbers and get insights
+2. Send verification codes to users
+3. Verify codes entered by users
+
+For more information on integrating with Bedrock Agents, see the [examples](./examples) directory.
 
 ## License
 
 MIT
-
-## Credits
-
-- Vonage Number Insight API
-- AWS Bedrock AI
-- AWS Lambda

@@ -1,65 +1,63 @@
-/**
- * Utility functions for formatting responses for Bedrock AI agents
- */
+import { APIGatewayProxyResult } from 'aws-lambda';
 
 /**
- * Format a successful response for Bedrock AI agents
+ * Format a successful API response
  * 
- * @param actionGroup - The action group name
- * @param apiPath - The API path
- * @param httpMethod - The HTTP method
- * @param responseBody - The response body
- * @returns Formatted response for Bedrock AI agent
+ * @param data - Response data
+ * @param statusCode - HTTP status code (default: 200)
+ * @returns Formatted API Gateway response
  */
-export function formatSuccess(
-  actionGroup: string,
-  apiPath: string,
-  httpMethod: string,
-  responseBody: any
-) {
+export const formatSuccessResponse = (data: any, statusCode: number = 200): APIGatewayProxyResult => {
   return {
-    messageVersion: '1.0',
-    response: {
-      actionGroup,
-      apiPath,
-      httpMethod,
-      httpStatusCode: 200,
-      responseBody: {
-        application_json: JSON.stringify(responseBody)
-      }
-    }
+    statusCode,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': true,
+    },
+    body: JSON.stringify(data)
   };
-}
+};
 
 /**
- * Format an error response for Bedrock AI agents
+ * Format an error API response
  * 
- * @param actionGroup - The action group name
- * @param apiPath - The API path
- * @param httpMethod - The HTTP method
- * @param statusCode - The HTTP status code
- * @param errorMessage - The error message
- * @returns Formatted error response for Bedrock AI agent
+ * @param statusCode - HTTP status code
+ * @param message - Error message
+ * @param details - Additional error details
+ * @returns Formatted API Gateway response
  */
-export function formatError(
-  actionGroup: string,
-  apiPath: string,
-  httpMethod: string,
-  statusCode: number,
-  errorMessage: string
-) {
-  return {
-    messageVersion: '1.0',
-    response: {
-      actionGroup,
-      apiPath,
-      httpMethod,
-      httpStatusCode: statusCode,
-      responseBody: {
-        application_json: JSON.stringify({
-          error: errorMessage
-        })
-      }
-    }
+export const formatErrorResponse = (
+  statusCode: number, 
+  message: string, 
+  details?: any
+): APIGatewayProxyResult => {
+  const response: any = {
+    error: message
   };
-}
+  
+  // Add error details if provided
+  if (details) {
+    if (details instanceof Error) {
+      // Handle Error objects
+      response.details = {
+        name: details.name,
+        message: details.message,
+        stack: process.env.NODE_ENV === 'dev' ? details.stack : undefined
+      };
+    } else {
+      // Handle other types of details
+      response.details = details;
+    }
+  }
+  
+  return {
+    statusCode,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Credentials': true,
+    },
+    body: JSON.stringify(response)
+  };
+};

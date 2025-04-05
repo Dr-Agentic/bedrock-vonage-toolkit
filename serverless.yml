@@ -56,6 +56,87 @@ functions:
                       type: string
                       pattern: '^\+[1-9]\d{1,14}$'
                       description: 'Phone number in E.164 format (e.g., +12025550123)'
+                      
+  requestVerification:
+    handler: src/actions/requestVerification.handler
+    events:
+      - http:
+          path: verify-request
+          method: post
+          cors: true
+          request:
+            schemas:
+              application/json:
+                schema:
+                  type: object
+                  required:
+                    - phoneNumber
+                    - brand
+                  properties:
+                    phoneNumber:
+                      type: string
+                      pattern: '^\+[1-9]\d{1,14}$'
+                      description: 'Phone number in E.164 format (e.g., +12025550123)'
+                    brand:
+                      type: string
+                      description: 'Name of your brand/application to include in the verification message'
+                    codeLength:
+                      type: integer
+                      minimum: 4
+                      maximum: 10
+                      default: 4
+                      description: 'Length of the verification code (4-10 digits)'
+                    locale:
+                      type: string
+                      default: 'en-us'
+                      description: 'Locale for the verification message'
+                    channel:
+                      type: string
+                      enum: ['sms', 'voice', 'whatsapp']
+                      default: 'sms'
+                      description: 'Channel to send the verification code through'
+                      
+  checkVerification:
+    handler: src/actions/checkVerification.handler
+    events:
+      - http:
+          path: verify-check
+          method: post
+          cors: true
+          request:
+            schemas:
+              application/json:
+                schema:
+                  type: object
+                  required:
+                    - requestId
+                    - code
+                  properties:
+                    requestId:
+                      type: string
+                      description: 'The request_id from the initial verification request'
+                    code:
+                      type: string
+                      description: 'The verification code entered by the user'
+                      
+  cancelVerification:
+    handler: src/actions/cancelVerification.handler
+    events:
+      - http:
+          path: verify-cancel
+          method: post
+          cors: true
+          request:
+            schemas:
+              application/json:
+                schema:
+                  type: object
+                  required:
+                    - requestId
+                  properties:
+                    requestId:
+                      type: string
+                      description: 'The request_id from the initial verification request'
 
 resources:
   Resources:

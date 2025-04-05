@@ -1,0 +1,285 @@
+openapi: 3.0.0
+info:
+  title: Phone Number Verification API
+  version: 1.0.0
+  description: API for verifying phone numbers using Vonage Verify API
+paths:
+  /verify-request:
+    post:
+      summary: Request phone number verification
+      description: |
+        Sends a verification code to the specified phone number via SMS, voice call, or WhatsApp.
+        The code can then be checked using the /verify-check endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phoneNumber
+                - brand
+              properties:
+                phoneNumber:
+                  type: string
+                  description: Phone number in E.164 format (e.g., +12025550123)
+                  example: "+12025550123"
+                brand:
+                  type: string
+                  description: Name of your brand/application to include in the verification message
+                  example: "MyApp"
+                codeLength:
+                  type: integer
+                  description: Length of the verification code (4-10 digits)
+                  default: 4
+                  minimum: 4
+                  maximum: 10
+                  example: 4
+                locale:
+                  type: string
+                  description: Locale for the verification message
+                  default: "en-us"
+                  example: "en-us"
+                channel:
+                  type: string
+                  description: Channel to send the verification code through
+                  enum: [sms, voice, whatsapp]
+                  default: "sms"
+                  example: "sms"
+      responses:
+        '200':
+          description: Verification code sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                    description: ID to use when checking the verification code
+                    example: "abcdef0123456789abcdef0123456789"
+                  status:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Status code from Vonage API
+                        example: "0"
+                      message:
+                        type: string
+                        description: Human-readable status message
+                        example: "Success"
+                  phoneNumber:
+                    type: string
+                    description: The phone number the code was sent to
+                    example: "+12025550123"
+                  message:
+                    type: string
+                    description: Success message
+                    example: "Verification code sent to +12025550123"
+                  nextStep:
+                    type: string
+                    description: Instructions for the next step
+                    example: "Check the verification code using the /verify-check endpoint with the requestId and code"
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Phone number must be in E.164 format (e.g., +12025550123)"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to request verification"
+
+  /verify-check:
+    post:
+      summary: Check verification code
+      description: |
+        Checks the verification code entered by the user against the code that was sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+                - code
+              properties:
+                requestId:
+                  type: string
+                  description: The request_id from the initial verification request
+                  example: "abcdef0123456789abcdef0123456789"
+                code:
+                  type: string
+                  description: The verification code entered by the user
+                  example: "1234"
+      responses:
+        '200':
+          description: Verification successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                    description: The request ID that was verified
+                    example: "abcdef0123456789abcdef0123456789"
+                  status:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Status code from Vonage API
+                        example: "0"
+                      message:
+                        type: string
+                        description: Human-readable status message
+                        example: "Success"
+                  verified:
+                    type: boolean
+                    description: Whether the verification was successful
+                    example: true
+                  message:
+                    type: string
+                    description: Success message
+                    example: "Phone number successfully verified"
+        '400':
+          description: Verification failed - incorrect code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Verification failed"
+                  details:
+                    type: object
+                    properties:
+                      requestId:
+                        type: string
+                        example: "abcdef0123456789abcdef0123456789"
+                      status:
+                        type: object
+                        properties:
+                          code:
+                            type: string
+                            example: "16"
+                          message:
+                            type: string
+                            example: "Code invalid"
+                      verified:
+                        type: boolean
+                        example: false
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to check verification code"
+
+  /verify-cancel:
+    post:
+      summary: Cancel verification request
+      description: |
+        Cancels an ongoing verification request. This is useful if the user wants to change
+        their phone number or if you want to stop the verification process for any reason.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - requestId
+              properties:
+                requestId:
+                  type: string
+                  description: The request_id from the initial verification request
+                  example: "abcdef0123456789abcdef0123456789"
+      responses:
+        '200':
+          description: Verification request cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId:
+                    type: string
+                    description: The request ID that was cancelled
+                    example: "abcdef0123456789abcdef0123456789"
+                  status:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        description: Status code from Vonage API
+                        example: "0"
+                      message:
+                        type: string
+                        description: Human-readable status message
+                        example: "Success"
+                  cancelled:
+                    type: boolean
+                    description: Whether the cancellation was successful
+                    example: true
+                  message:
+                    type: string
+                    description: Success message
+                    example: "Verification request successfully cancelled"
+        '400':
+          description: Cancellation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to cancel verification"
+                  details:
+                    type: object
+                    properties:
+                      requestId:
+                        type: string
+                        example: "abcdef0123456789abcdef0123456789"
+                      status:
+                        type: object
+                        properties:
+                          code:
+                            type: string
+                            example: "6"
+                          message:
+                            type: string
+                            example: "Request not found"
+                      cancelled:
+                        type: boolean
+                        example: false
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to cancel verification"
