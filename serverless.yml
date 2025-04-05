@@ -8,8 +8,7 @@ provider:
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
   environment:
-    VONAGE_API_KEY: ${env:VONAGE_API_KEY}
-    VONAGE_API_SECRET: ${env:VONAGE_API_SECRET}
+    VONAGE_CREDENTIALS_SECRET_NAME: bedrock-vonage-toolkit/credentials
     NODE_ENV: ${self:provider.stage}
   iam:
     role:
@@ -20,6 +19,11 @@ provider:
             - logs:CreateLogStream
             - logs:PutLogEvents
           Resource: arn:aws:logs:*:*:*
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource: 
+            - arn:aws:secretsmanager:${self:provider.region}:*:secret:bedrock-vonage-toolkit/credentials-*
 
 plugins:
   - serverless-esbuild

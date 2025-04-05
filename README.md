@@ -18,6 +18,21 @@ npm install
 
 ## Configuration
 
+### Using AWS Secrets Manager (Recommended for Production)
+
+1. Create a secret in AWS Secrets Manager:
+
+```bash
+aws secretsmanager create-secret \
+    --name bedrock-vonage-toolkit/credentials \
+    --description "Vonage API credentials for Bedrock Vonage Toolkit" \
+    --secret-string '{"VONAGE_API_KEY":"your_api_key","VONAGE_API_SECRET":"your_api_secret"}'
+```
+
+2. Make sure your AWS role has permission to access this secret.
+
+### Using Environment Variables (Development Only)
+
 Create a `.env` file with your Vonage API credentials:
 
 ```

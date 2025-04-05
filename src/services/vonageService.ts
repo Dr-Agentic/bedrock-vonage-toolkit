@@ -1,4 +1,4 @@
-import vonageClient from '../config/vonage';
+import vonageClient, { getVonageClient } from '../config/vonage';
 
 /**
  * Service for interacting with Vonage APIs
