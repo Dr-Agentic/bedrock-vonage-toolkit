@@ -3,7 +3,7 @@ const { Auth } = require('@vonage/auth');
 const { Verify } = require('@vonage/verify');
 
 // Configuration
-const PHONE_NUMBER = '+1234567890'; // Specific test phone number
+const PHONE_NUMBER = process.env.TEST_PHONE_NUMBER || '+1234567890'; // Use environment variable
 const BRAND_NAME = 'BedrockTest';
 
 console.log(`Using phone number: ${PHONE_NUMBER}`);

@@ -65,12 +65,15 @@ npm install
 
 ### Configuration
 
-Create a `.env` file with your Vonage API credentials:
+Create a `.env` file with your Vonage API credentials and test phone number:
 
 ```
 VONAGE_API_KEY=your_api_key
 VONAGE_API_SECRET=your_api_secret
+TEST_PHONE_NUMBER=+1234567890
 ```
+
+You can use the provided `.env.example` file as a template.
 
 ### Testing
 

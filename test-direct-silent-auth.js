@@ -4,7 +4,7 @@ require('dotenv').config();
 // Configuration
 const API_KEY = process.env.VONAGE_API_KEY;
 const API_SECRET = process.env.VONAGE_API_SECRET;
-const PHONE_NUMBER = '+1234567890';
+const PHONE_NUMBER = process.env.TEST_PHONE_NUMBER || '+1234567890'; // Use environment variable
 const BRAND_NAME = 'BedrockTest';
 
 // Mock device information for silent auth

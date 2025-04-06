@@ -4,8 +4,13 @@ require('dotenv').config();
 // Configuration
 const API_KEY = process.env.VONAGE_API_KEY;
 const API_SECRET = process.env.VONAGE_API_SECRET;
-const REQUEST_ID = '577af3471e2340e19a560f6c9a74a16e';
-const CODE = '8679';
+const REQUEST_ID = process.argv[2] || ''; // Get request ID from command line
+const CODE = process.argv[3] || ''; // Get code from command line
+
+if (!REQUEST_ID || !CODE) {
+  console.error('Usage: node test-direct-check.js <request_id> <code>');
+  process.exit(1);
+}
 
 // Build the request options
 const options = {
