@@ -11,7 +11,10 @@ dotenv.config();
 // Initialize SecretsManager client
 const secretsManager = new SecretsManager();
 
-// Function to get Vonage credentials
+/**
+ * Get Vonage credentials from environment variables or AWS Secrets Manager
+ * @returns Promise with API key and secret
+ */
 async function getVonageCredentials(): Promise<{ apiKey: string; apiSecret: string }> {
   // For local development, use environment variables if available
   if (process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET) {
@@ -47,13 +50,16 @@ async function getVonageCredentials(): Promise<{ apiKey: string; apiSecret: stri
   }
 }
 
-// Initialize clients
+// Initialize clients (singleton pattern)
 let vonageClient: Vonage | null = null;
 let verifyClient: Verify | null = null;
 let smsClient: SMS | null = null;
 
-// Get initialized Vonage client
-export async function getVonageClient() {
+/**
+ * Get initialized Vonage client
+ * @returns Promise with Vonage client
+ */
+export async function getVonageClient(): Promise<Vonage> {
   if (!vonageClient) {
     const credentials = await getVonageCredentials();
     const auth = new Auth({
@@ -67,8 +73,11 @@ export async function getVonageClient() {
   return vonageClient;
 }
 
-// Get initialized Verify client
-export async function getVerifyClient() {
+/**
+ * Get initialized Verify client
+ * @returns Promise with Verify client
+ */
+export async function getVerifyClient(): Promise<Verify> {
   if (!verifyClient) {
     const credentials = await getVonageCredentials();
     const auth = new Auth({
@@ -82,8 +91,11 @@ export async function getVerifyClient() {
   return verifyClient;
 }
 
-// Get initialized SMS client
-export async function getSmsClient() {
+/**
+ * Get initialized SMS client
+ * @returns Promise with SMS client
+ */
+export async function getSmsClient(): Promise<SMS> {
   if (!smsClient) {
     const credentials = await getVonageCredentials();
     const auth = new Auth({
@@ -97,74 +109,5 @@ export async function getSmsClient() {
   return smsClient;
 }
 
-// For backward compatibility with existing code
-export default {
-  numberInsights: {
-    advancedLookup: async (number: string) => {
-      const client = await getVonageClient();
-      return client.numberInsight.advancedInsightAsync({ number });
-    }
-  },
-  verify: {
-    request: async (params: any, callback: any) => {
-      try {
-        const verify = await getVerifyClient();
-        const result = await verify.request({
-          number: params.number,
-          brand: params.brand,
-          codeLength: params.code_length,
-          locale: params.lg,
-          workflowId: params.workflow_id,
-          channel: params.channel
-        });
-        callback(null, result);
-      } catch (error) {
-        callback(error, null);
-      }
-    },
-    check: async (params: any, callback: any) => {
-      try {
-        const verify = await getVerifyClient();
-        const result = await verify.check({
-          requestId: params.request_id,
-          code: params.code
-        });
-        callback(null, result);
-      } catch (error) {
-        callback(error, null);
-      }
-    },
-    control: async (params: any, callback: any) => {
-      try {
-        const verify = await getVerifyClient();
-        const result = await verify.cancel({
-          requestId: params.request_id
-        });
-        callback(null, result);
-      } catch (error) {
-        callback(error, null);
-      }
-    }
-  },
-  message: {
-    sendSms: async (from: string, to: string, text: string, options: any, callback: any) => {
-      try {
-        const sms = await getSmsClient();
-        const result = await sms.send({
-          from,
-          to,
-          text,
-          type: options.type,
-          ttl: options.ttl,
-          statusReportReq: options.status_report_req,
-          callback: options.callback,
-          callbackMethod: options['callback-method'],
-          clientRef: options.client_ref
-        });
-        callback(null, result);
-      } catch (error) {
-        callback(error, null);
-      }
-    }
-  }
-};
+// Export all clients
+export { Vonage, Verify, SMS };

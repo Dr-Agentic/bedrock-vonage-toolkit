@@ -1,5 +1,4 @@
 import { getSmsClient } from '../config/vonage';
-import vonageClient from '../config/vonage';
 
 /**
  * Service for sending SMS messages using Vonage API
@@ -30,41 +29,27 @@ export class SmsService {
     try {
       console.log(`Sending SMS from ${from} to ${to}`);
       
+      // Get the SMS client
+      const sms = await getSmsClient();
+      
       // Prepare SMS parameters
-      const smsParams = {
-        type: options.type || 'text',
-        ttl: options.ttl,
-        status_report_req: options.statusReportReq ? 1 : 0,
-        callback: options.webhookUrl,
-        'callback-method': options.webhookMethod,
-        client_ref: options.clientRef
+      const smsParams: any = {
+        from,
+        to,
+        text,
+        type: options.type || 'text'
       };
       
-      // Remove undefined parameters
-      Object.keys(smsParams).forEach(key => {
-        if (smsParams[key as keyof typeof smsParams] === undefined) {
-          delete smsParams[key as keyof typeof smsParams];
-        }
-      });
+      // Add optional parameters if they exist
+      if (options.ttl) smsParams.ttl = options.ttl;
+      if (options.statusReportReq !== undefined) smsParams.statusReportReq = options.statusReportReq;
+      if (options.webhookUrl) smsParams.callback = options.webhookUrl;
+      if (options.webhookMethod) smsParams.callbackMethod = options.webhookMethod;
+      if (options.clientRef) smsParams.clientRef = options.clientRef;
       
       // Send SMS using Vonage API
-      const response = await new Promise((resolve, reject) => {
-        vonageClient.message.sendSms(
-          from,
-          to,
-          text,
-          smsParams,
-          (err: any, responseData: any) => {
-            if (err) {
-              console.error('Error sending SMS:', err);
-              reject(err);
-            } else {
-              console.log('SMS sent successfully:', JSON.stringify(responseData, null, 2));
-              resolve(responseData);
-            }
-          }
-        );
-      });
+      const response = await sms.send(smsParams);
+      console.log('SMS sent successfully:', JSON.stringify(response, null, 2));
       
       // Format the response
       return this.formatSmsResponse(response);
@@ -89,17 +74,17 @@ export class SmsService {
     
     // Format the response
     return {
-      messageId: message.message_id || 'unknown',
+      messageId: message.messageId || message.message_id || 'unknown',
       to: message.to,
       status: {
         code: message.status,
         message: this.getSmsStatusMessage(message.status)
       },
-      remainingBalance: message.remaining_balance,
-      messagePrice: message.message_price,
+      remainingBalance: message.remainingBalance || message.remaining_balance,
+      messagePrice: message.messagePrice || message.message_price,
       network: message.network,
-      deliveryStatus: message['error-text'] ? 'failed' : 'sent',
-      errorMessage: message['error-text'],
+      deliveryStatus: message.errorText || message['error-text'] ? 'failed' : 'sent',
+      errorMessage: message.errorText || message['error-text'],
       timestamp: new Date().toISOString(),
       messageCount: messages.length
     };

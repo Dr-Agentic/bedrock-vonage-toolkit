@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { VerifyService } from '../services/verifyService';
-import { formatErrorResponse, formatSuccessResponse } from '../utils/responseFormatter';
+import Joi from 'joi';
 
 /**
  * Lambda handler for checking a verification code
@@ -14,39 +14,67 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
   try {
     // Parse request body
     const body = event.body ? JSON.parse(event.body) : {};
-    const { requestId, code } = body;
     
-    // Validate required parameters
-    if (!requestId) {
-      return formatErrorResponse(400, 'Request ID is required');
+    // Validate with Joi
+    const schema = Joi.object({
+      requestId: Joi.string().required()
+        .message('Request ID is required'),
+      code: Joi.string().required()
+        .message('Verification code is required')
+    });
+    
+    const { error, value } = schema.validate(body);
+    if (error) {
+      return {
+        statusCode: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Credentials': true
+        },
+        body: JSON.stringify({ error: error.message })
+      };
     }
     
-    if (!code) {
-      return formatErrorResponse(400, 'Verification code is required');
-    }
-    
-    // Initialize service and check verification code
+    // Initialize service and check verification
     const verifyService = new VerifyService();
-    const result = await verifyService.checkVerification(requestId, code);
+    const result = await verifyService.checkVerification(
+      value.requestId,
+      value.code
+    );
     
-    // Return appropriate response based on verification result
-    if (result.verified) {
-      return formatSuccessResponse({
+    // Return response based on verification result
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true
+      },
+      body: JSON.stringify({
         requestId: result.requestId,
         status: result.status,
-        verified: true,
-        message: 'Phone number successfully verified'
-      });
-    } else {
-      return formatErrorResponse(400, 'Verification failed', {
-        requestId: result.requestId,
-        status: result.status,
-        verified: false,
-        message: result.status.message
-      });
-    }
-  } catch (error) {
+        success: result.success,
+        message: result.success 
+          ? 'Verification successful' 
+          : `Verification failed: ${result.errorText || 'Invalid code'}`,
+        price: result.price,
+        currency: result.currency
+      })
+    };
+  } catch (error: any) {
     console.error('Error in checkVerification handler:', error);
-    return formatErrorResponse(500, 'Failed to check verification code', error);
+    
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true
+      },
+      body: JSON.stringify({
+        error: error.message || 'Failed to check verification'
+      })
+    };
   }
 };
