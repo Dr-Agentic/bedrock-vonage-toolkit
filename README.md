@@ -1,149 +1,98 @@
 # Bedrock Vonage Toolkit
 
-A serverless toolkit for integrating Vonage (formerly Nexmo) communication services with AWS Bedrock applications.
+A toolkit for integrating Vonage Number Insight API with AWS Bedrock AI agents.
 
 ## Features
 
-- **SMS Messaging**: Send SMS messages to users
-- **Phone Verification**: Verify phone numbers using multiple methods
-  - Silent Authentication (no user interaction required)
-  - SMS Verification Codes
-  - Voice Call Verification
-- **Serverless Architecture**: Deploy as AWS Lambda functions
-- **Direct HTTP Fallback**: Alternative implementation for SDK issues
+- Phone number validation and verification
+- Carrier information lookup
+- Number portability detection
+- Roaming status detection
+- Risk assessment
+- Caller identity information
 
-## Phone Verification Workflows
-
-This toolkit supports multiple verification workflows:
-
-### Comprehensive Workflow (Default)
-
-The most comprehensive workflow (workflow_id: 1) includes:
-
-1. **Silent Authentication**: Attempts to verify the user without any interaction
-   - Uses mobile network information to verify the user's SIM card
-   - No SMS or notification is sent to the user
-   - Fastest and most seamless verification method when available
-
-2. **SMS Verification**: If silent authentication fails or times out
-   - Sends a verification code via SMS
-   - User must enter the code to complete verification
-
-3. **Voice Call**: If SMS verification times out
-   - Places an automated voice call to the user
-   - Speaks the verification code
-
-### SMS + Voice Workflow
-
-A simpler workflow (workflow_id: 6) includes:
-
-1. **SMS Verification**: Sends a verification code via SMS
-2. **Voice Call**: If SMS verification times out, places an automated call
-
-## Silent Authentication Requirements
-
-To use silent authentication:
-
-- Mobile device must have an active cellular connection
-- App must implement the Vonage Verify SDK
-- Additional parameters must be provided:
-  - `app_hash`: Application hash for Android devices
-  - `sdk_version`: Version of the Verify SDK
-  - `device_model`: User's device model
-  - `os_version`: Operating system version
-  - `country_code`: Two-letter country code
-  - `source_ip`: User's IP address
-  - `silent_auth_timeout_secs`: Timeout for silent auth (5-30 seconds)
-
-## Usage
-
-### Installation
+## Installation
 
 ```bash
 npm install
 ```
 
-### Configuration
+## Configuration
 
-Create a `.env` file with your Vonage API credentials and test phone number:
+Create a `.env` file in the root directory with the following variables:
 
 ```
 VONAGE_API_KEY=your_api_key
 VONAGE_API_SECRET=your_api_secret
-TEST_PHONE_NUMBER=+1234567890
+TEST_PHONE_NUMBER=+12025550142  # Optional: For testing
 ```
 
-You can use the provided `.env.example` file as a template.
+## Usage
 
-### Testing
-
-#### Test Silent Authentication Workflow
+### Local Testing
 
 ```bash
-node test-verify-silent-auth.js request
+npm run start
 ```
 
-#### Test Direct HTTP Implementation
+### Running Tests
 
 ```bash
-node test-direct-silent-auth.js
-```
+# Run all tests
+npm test
 
-#### Test Standard Verification
+# Run specific test file
+npm test -- tests/services/vonageService.test.ts
 
-```bash
-node test-verify-specific.js request
-node test-verify-specific.js check <requestId> <code>
+# Run with coverage
+npm test -- --coverage
 ```
 
 ### Deployment
-
-Deploy to AWS using the Serverless Framework:
 
 ```bash
 npm run deploy
 ```
 
-## API Reference
-
-### Request Verification
+## Project Structure
 
 ```
-POST /request-verification
-
-{
-  "number": "+12025550123",
-  "brand": "YourAppName",
-  "workflowId": 1,
-  "appHash": "abcdefghijklmnopqrstuvwxyz123456",
-  "sdkVersion": "2.3.0",
-  "deviceModel": "iPhone 13",
-  "osVersion": "iOS 16.5",
-  "countryCode": "US",
-  "silentAuthTimeoutSecs": 10
-}
+├── src/
+│   ├── actions/           # Business logic actions
+│   ├── config/            # Configuration files
+│   ├── models/            # Data models
+│   ├── services/          # External service integrations
+│   └── utils/             # Utility functions
+├── tests/
+│   ├── actions/           # Action tests
+│   ├── integration/       # Integration tests
+│   ├── services/          # Service tests
+│   └── utils/             # Utility tests
+├── .env                   # Environment variables (not in repo)
+├── jest.config.js         # Jest configuration
+├── package.json           # Project dependencies
+├── serverless.yml         # Serverless configuration
+└── tsconfig.json          # TypeScript configuration
 ```
 
-### Check Verification
+## Testing Strategy
 
-```
-POST /check-verification
+The project uses Jest for testing with the following types of tests:
 
-{
-  "requestId": "abcd1234efgh5678",
-  "code": "1234"
-}
-```
+1. **Unit Tests**: Test individual functions and classes in isolation
+2. **Integration Tests**: Test interactions between components
+3. **End-to-End Tests**: Test complete workflows
 
-### Cancel Verification
+### Test Coverage
 
-```
-POST /cancel-verification
+We aim for at least 70% code coverage across the codebase. Coverage reports are generated after running tests with the `--coverage` flag.
 
-{
-  "requestId": "abcd1234efgh5678"
-}
-```
+## Contributing
+
+1. Write tests for new features
+2. Ensure all tests pass before submitting PRs
+3. Follow the existing code style
+4. Update documentation as needed
 
 ## License
 

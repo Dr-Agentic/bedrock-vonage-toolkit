@@ -1,6 +1,100 @@
 import axios from 'axios';
 
 /**
+ * Interface for Vonage Number Insight API response
+ */
+export interface VonageNumberInsightResponse {
+  status?: number;
+  status_message?: string;
+  request_id?: string;
+  international_format_number?: string;
+  national_format_number?: string;
+  country_code?: string;
+  country_code_iso3?: string;
+  country_name?: string;
+  country_prefix?: string;
+  request_price?: string;
+  remaining_balance?: string;
+  current_carrier?: {
+    network_code?: string;
+    name?: string;
+    country?: string;
+    network_type?: string;
+  };
+  original_carrier?: {
+    network_code?: string;
+    name?: string;
+    country?: string;
+    network_type?: string;
+  };
+  valid_number?: string;
+  reachable?: string;
+  ported?: string;
+  roaming?: string;
+  roaming_country_code?: string;
+  roaming_network_name?: string;
+  roaming_network_code?: string;
+  caller_name?: string;
+  caller_type?: string;
+  first_name?: string;
+  last_name?: string;
+  risk_score?: number;
+  risk_recommendation?: string;
+  lookup_outcome?: number;
+  lookup_outcome_message?: string;
+}
+
+/**
+ * Interface for formatted number insight data
+ */
+export interface FormattedNumberInsight {
+  phoneNumber: string;
+  basicInfo: {
+    internationalFormat: string;
+    nationalFormat: string;
+    countryCode: string;
+    countryName: string;
+    countryPrefix: string;
+  };
+  carrierInfo: {
+    name: string;
+    country: string;
+    networkType: string;
+    networkCode: string;
+  };
+  validity: {
+    valid: boolean;
+    reachable: boolean;
+    ported: boolean;
+    roaming: boolean;
+  };
+  advancedDetails: {
+    roamingInfo: {
+      status: string;
+      countryCode: string;
+      networkName: string;
+      networkCode: string;
+    };
+    portingInfo: {
+      status: string;
+      originalNetwork: string;
+    };
+    callerIdentity: {
+      callerName: string;
+      callerType: string;
+      firstName: string;
+      lastName: string;
+    };
+  };
+  riskScore: {
+    score: number;
+    recommendation: string;
+  };
+  timestamp: string;
+  rawData: VonageNumberInsightResponse;
+}
+
+/**
  * Service for interacting with Vonage APIs
  */
 export class VonageService {
@@ -10,7 +104,7 @@ export class VonageService {
    * @param number - Phone number to analyze (E.164 format)
    * @returns Promise with detailed number insights
    */
-  async getAdvancedNumberInsight(number: string) {
+  async getAdvancedNumberInsight(number: string): Promise<FormattedNumberInsight> {
     try {
       console.log(`Getting advanced insights for number: ${number}`);
       
@@ -22,7 +116,7 @@ export class VonageService {
       
       console.log(`Making request to: ${url}`);
       
-      const response = await axios.get(url);
+      const response = await axios.get<VonageNumberInsightResponse>(url);
       const insights = response.data;
       
       console.log('Advanced insight response:', JSON.stringify(insights, null, 2));

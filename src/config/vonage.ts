@@ -2,6 +2,7 @@ import { Auth } from '@vonage/auth';
 import { Vonage } from '@vonage/server-sdk';
 import { Verify } from '@vonage/verify';
 import { SMS } from '@vonage/sms';
+import { NumberInsights } from '@vonage/number-insights';
 import dotenv from 'dotenv';
 import { SecretsManager } from 'aws-sdk';
 
@@ -54,6 +55,7 @@ async function getVonageCredentials(): Promise<{ apiKey: string; apiSecret: stri
 let vonageClient: Vonage | null = null;
 let verifyClient: Verify | null = null;
 let smsClient: SMS | null = null;
+let numberInsightsClient: NumberInsights | null = null;
 
 /**
  * Get initialized Vonage client
@@ -109,5 +111,23 @@ export async function getSmsClient(): Promise<SMS> {
   return smsClient;
 }
 
+/**
+ * Get initialized Number Insights client
+ * @returns Promise with Number Insights client
+ */
+export async function getNumberInsightsClient(): Promise<NumberInsights> {
+  if (!numberInsightsClient) {
+    const credentials = await getVonageCredentials();
+    const auth = new Auth({
+      apiKey: credentials.apiKey,
+      apiSecret: credentials.apiSecret
+    });
+    
+    numberInsightsClient = new NumberInsights(auth);
+    console.log('Number Insights client initialized successfully');
+  }
+  return numberInsightsClient;
+}
+
 // Export all clients
-export { Vonage, Verify, SMS };
+export { Vonage, Verify, SMS, NumberInsights };
