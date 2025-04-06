@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { SecretsManager } from '../utils/secretsManager';
 
 /**
  * Interface for Vonage Number Insight API response
@@ -98,6 +99,18 @@ export interface FormattedNumberInsight {
  * Service for interacting with Vonage APIs
  */
 export class VonageService {
+  private secretsManager: SecretsManager;
+  private readonly secretName: string;
+  
+  /**
+   * Constructor
+   * @param secretName - Name of the secret containing Vonage credentials
+   */
+  constructor(secretName: string = 'vonage/api-credentials') {
+    this.secretsManager = SecretsManager.getInstance();
+    this.secretName = secretName;
+  }
+  
   /**
    * Get comprehensive number insights using direct API call
    * 
@@ -108,7 +121,7 @@ export class VonageService {
     try {
       console.log(`Getting advanced insights for number: ${number}`);
       
-      // Get Vonage credentials
+      // Get Vonage credentials from Secrets Manager
       const credentials = await this.getVonageCredentials();
       
       // Make direct API call to Vonage Number Insight API
@@ -175,18 +188,25 @@ export class VonageService {
   }
   
   /**
-   * Get Vonage credentials from environment variables
+   * Get Vonage credentials from Secrets Manager
    * @returns Promise with API key and secret
    */
   private async getVonageCredentials(): Promise<{ apiKey: string; apiSecret: string }> {
-    // For local development, use environment variables
-    if (process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET) {
-      return {
-        apiKey: process.env.VONAGE_API_KEY,
-        apiSecret: process.env.VONAGE_API_SECRET
-      };
+    try {
+      return await this.secretsManager.getVonageCredentials(this.secretName);
+    } catch (error) {
+      console.error('Error getting Vonage credentials:', error);
+      
+      // Fallback to environment variables if available (for backward compatibility)
+      if (process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET) {
+        console.log('Using Vonage credentials from environment variables');
+        return {
+          apiKey: process.env.VONAGE_API_KEY,
+          apiSecret: process.env.VONAGE_API_SECRET
+        };
+      }
+      
+      throw new Error('Vonage API credentials not found');
     }
-    
-    throw new Error('Vonage API credentials not found');
   }
 }

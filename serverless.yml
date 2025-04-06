@@ -5,25 +5,34 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs18.x
-  stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
-  environment:
-    VONAGE_CREDENTIALS_SECRET_NAME: bedrock-vonage-toolkit/credentials
-    NODE_ENV: ${self:provider.stage}
+  stage: ${opt:stage, 'dev'}
+  memorySize: 256
+  timeout: 30
+  logRetentionInDays: 14
+  
+  # IAM permissions
   iam:
     role:
       statements:
+        # Allow access to Secrets Manager
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource:
+            - arn:aws:secretsmanager:${aws:region}:${aws:accountId}:secret:vonage/*
+        # Allow access to CloudWatch Logs
         - Effect: Allow
           Action:
             - logs:CreateLogGroup
             - logs:CreateLogStream
             - logs:PutLogEvents
-          Resource: arn:aws:logs:*:*:*
-        - Effect: Allow
-          Action:
-            - secretsmanager:GetSecretValue
-          Resource: 
-            - arn:aws:secretsmanager:${self:provider.region}:*:secret:bedrock-vonage-toolkit/credentials-*
+          Resource: arn:aws:logs:${aws:region}:${aws:accountId}:log-group:/aws/lambda/*
+  
+  # Environment variables
+  environment:
+    NODE_ENV: ${opt:stage, 'dev'}
+    VONAGE_SECRET_NAME: vonage/api-credentials-${opt:stage, 'dev'}
 
 plugins:
   - serverless-esbuild
@@ -34,185 +43,70 @@ custom:
     bundle: true
     minify: true
     sourcemap: true
-    target: 'node18'
-    platform: 'node'
+    target: node18
+    platform: node
     concurrency: 10
-    external:
-      - 'aws-sdk'
+    packager: npm
+    exclude:
+      - aws-sdk
 
 functions:
   getNumberInsight:
     handler: src/actions/getInsightData.handler
+    description: Get detailed information about a phone number using Vonage Number Insight API
     events:
       - http:
-          path: number-insight
+          path: /number-insight
           method: post
           cors: true
-          request:
-            schemas:
-              application/json:
-                schema:
-                  type: object
-                  required:
-                    - phoneNumber
-                  properties:
-                    phoneNumber:
-                      type: string
-                      pattern: '^\+[1-9]\d{1,14}$'
-                      description: 'Phone number in E.164 format (e.g., +12025550123)'
-                      
+  
   sendSms:
     handler: src/actions/sendSms.handler
+    description: Send SMS messages using Vonage SMS API
     events:
       - http:
-          path: send-sms
+          path: /sms
           method: post
           cors: true
-          request:
-            schemas:
-              application/json:
-                schema:
-                  type: object
-                  required:
-                    - from
-                    - to
-                    - text
-                  properties:
-                    from:
-                      type: string
-                      description: 'Sender ID or phone number (must be enabled in your Vonage account)'
-                    to:
-                      type: string
-                      pattern: '^\+[1-9]\d{1,14}$'
-                      description: 'Recipient phone number in E.164 format (e.g., +12025550123)'
-                    text:
-                      type: string
-                      description: 'Message content'
-                    type:
-                      type: string
-                      enum: ['text', 'unicode', 'binary']
-                      default: 'text'
-                      description: 'Message type'
-                    ttl:
-                      type: integer
-                      minimum: 300000
-                      maximum: 259200000
-                      description: 'Message time-to-live in milliseconds (5 minutes to 3 days)'
-                    statusReportReq:
-                      type: boolean
-                      default: false
-                      description: 'Request delivery receipt'
-                    webhookUrl:
-                      type: string
-                      description: 'URL for delivery receipt webhook'
-                    webhookMethod:
-                      type: string
-                      enum: ['GET', 'POST']
-                      default: 'POST'
-                      description: 'HTTP method for delivery receipt webhook'
-                    clientRef:
-                      type: string
-                      maxLength: 40
-                      description: 'Client reference for the message'
-                      
+  
   requestVerification:
     handler: src/actions/requestVerification.handler
+    description: Request phone number verification using Vonage Verify API
     events:
       - http:
-          path: verify-request
+          path: /verify/request
           method: post
           cors: true
-          request:
-            schemas:
-              application/json:
-                schema:
-                  type: object
-                  required:
-                    - phoneNumber
-                    - brand
-                  properties:
-                    phoneNumber:
-                      type: string
-                      pattern: '^\+[1-9]\d{1,14}$'
-                      description: 'Phone number in E.164 format (e.g., +12025550123)'
-                    brand:
-                      type: string
-                      description: 'Name of your brand/application to include in the verification message'
-                    codeLength:
-                      type: integer
-                      minimum: 4
-                      maximum: 10
-                      default: 4
-                      description: 'Length of the verification code (4-10 digits)'
-                    locale:
-                      type: string
-                      default: 'en-us'
-                      description: 'Locale for the verification message'
-                    channel:
-                      type: string
-                      enum: ['sms', 'voice', 'whatsapp']
-                      default: 'sms'
-                      description: 'Channel to send the verification code through'
-                      
+  
   checkVerification:
     handler: src/actions/checkVerification.handler
+    description: Check verification code using Vonage Verify API
     events:
       - http:
-          path: verify-check
+          path: /verify/check
           method: post
           cors: true
-          request:
-            schemas:
-              application/json:
-                schema:
-                  type: object
-                  required:
-                    - requestId
-                    - code
-                  properties:
-                    requestId:
-                      type: string
-                      description: 'The request_id from the initial verification request'
-                    code:
-                      type: string
-                      description: 'The verification code entered by the user'
-                      
+  
   cancelVerification:
     handler: src/actions/cancelVerification.handler
+    description: Cancel verification request using Vonage Verify API
     events:
       - http:
-          path: verify-cancel
+          path: /verify/cancel
           method: post
           cors: true
-          request:
-            schemas:
-              application/json:
-                schema:
-                  type: object
-                  required:
-                    - requestId
-                  properties:
-                    requestId:
-                      type: string
-                      description: 'The request_id from the initial verification request'
 
 resources:
   Resources:
-    GatewayResponseDefault4XX:
-      Type: 'AWS::ApiGateway::GatewayResponse'
+    # Create a Secrets Manager secret for Vonage credentials
+    VonageApiCredentials:
+      Type: AWS::SecretsManager::Secret
       Properties:
-        ResponseParameters:
-          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
-        ResponseType: DEFAULT_4XX
-        RestApiId:
-          Ref: ApiGatewayRestApi
-    GatewayResponseDefault5XX:
-      Type: 'AWS::ApiGateway::GatewayResponse'
-      Properties:
-        ResponseParameters:
-          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
-          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
-        ResponseType: DEFAULT_5XX
-        RestApiId:
-          Ref: ApiGatewayRestApi
+        Name: vonage/api-credentials-${opt:stage, 'dev'}
+        Description: Vonage API credentials for the Bedrock Vonage Toolkit
+        SecretString: '{"apiKey":"REPLACE_WITH_YOUR_API_KEY","apiSecret":"REPLACE_WITH_YOUR_API_SECRET"}'
+        Tags:
+          - Key: Project
+            Value: bedrock-vonage-toolkit
+          - Key: Environment
+            Value: ${opt:stage, 'dev'}

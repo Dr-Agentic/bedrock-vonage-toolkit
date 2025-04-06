@@ -10,6 +10,8 @@ A toolkit for integrating Vonage Number Insight API with AWS Bedrock AI agents.
 - Roaming status detection
 - Risk assessment
 - Caller identity information
+- SMS messaging
+- Two-factor authentication
 
 ## Installation
 
@@ -19,13 +21,34 @@ npm install
 
 ## Configuration
 
+### Local Development
+
 Create a `.env` file in the root directory with the following variables:
 
 ```
+# Only needed for local development and testing
 VONAGE_API_KEY=your_api_key
 VONAGE_API_SECRET=your_api_secret
+
+# Test parameters
 TEST_PHONE_NUMBER=+12025550142  # Optional: For testing
 ```
+
+### AWS Deployment
+
+When deployed to AWS, the application uses AWS Secrets Manager to store sensitive credentials:
+
+1. Create a secret in AWS Secrets Manager with the following structure:
+   ```json
+   {
+     "apiKey": "your_vonage_api_key",
+     "apiSecret": "your_vonage_api_secret"
+   }
+   ```
+
+2. The default secret name is `vonage/api-credentials-{stage}` where `{stage}` is your deployment stage (e.g., `dev`, `prod`).
+
+3. Update the IAM permissions in `serverless.yml` if you use a different secret name.
 
 ## Usage
 
@@ -46,12 +69,22 @@ npm test -- tests/services/vonageService.test.ts
 
 # Run with coverage
 npm test -- --coverage
+
+# Run only unit tests
+npm run test:unit
+
+# Run only integration tests
+npm run test:integration
 ```
 
 ### Deployment
 
 ```bash
+# Deploy to dev stage
 npm run deploy
+
+# Deploy to production stage
+npm run deploy -- --stage prod
 ```
 
 ## Project Structure
@@ -74,6 +107,17 @@ npm run deploy
 ├── serverless.yml         # Serverless configuration
 └── tsconfig.json          # TypeScript configuration
 ```
+
+## Security
+
+This project uses AWS Secrets Manager to securely store API credentials. In production environments, no sensitive credentials are stored in environment variables or code.
+
+### Secrets Management
+
+- API keys and secrets are stored in AWS Secrets Manager
+- Secrets are cached with a TTL to reduce API calls
+- Local development can use environment variables as a fallback
+- IAM permissions are scoped to specific secrets
 
 ## Testing Strategy
 

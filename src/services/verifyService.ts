@@ -1,174 +1,228 @@
-import { getVerifyClient } from '../config/vonage';
+import { Vonage } from '@vonage/server-sdk';
+import { Verify } from '@vonage/verify';
+import { SecretsManager } from '../utils/secretsManager';
 
 /**
- * Service for phone number verification using Vonage Verify API
+ * Interface for verification request options
+ */
+export interface VerifyRequestOptions {
+  number: string;
+  brand: string;
+  workflow?: string[];
+  locale?: string;
+  codeLength?: number;
+  pinExpiry?: number;
+  nextEventWait?: number;
+}
+
+/**
+ * Interface for verification request response
+ */
+export interface VerifyRequestResponse {
+  requestId: string;
+  status: 'success' | 'failed';
+  errorCode?: string;
+  errorText?: string;
+  silentAuth?: boolean;
+  nextStep?: string;
+}
+
+/**
+ * Interface for verification check options
+ */
+export interface VerifyCheckOptions {
+  requestId: string;
+  code: string;
+}
+
+/**
+ * Interface for verification check response
+ */
+export interface VerifyCheckResponse {
+  requestId: string;
+  status: 'success' | 'failed';
+  errorCode?: string;
+  errorText?: string;
+  price?: string;
+  currency?: string;
+  timestamp: string;
+}
+
+/**
+ * Interface for verification cancel response
+ */
+export interface VerifyCancelResponse {
+  requestId: string;
+  status: 'success' | 'failed';
+  errorCode?: string;
+  errorText?: string;
+  timestamp: string;
+}
+
+/**
+ * Service for phone number verification via Vonage
  */
 export class VerifyService {
+  private secretsManager: SecretsManager;
+  private readonly secretName: string;
+  
   /**
-   * Request a verification code to be sent to a phone number
-   * 
-   * @param number - Phone number to verify in E.164 format (e.g., +12025550123)
-   * @param brand - Name of your brand or application (displayed to the user)
-   * @param options - Additional verification options
-   * @returns Promise with verification request result
+   * Constructor
+   * @param secretName - Name of the secret containing Vonage credentials
    */
-  async requestVerification(
-    number: string,
-    brand: string,
-    options: {
-      codeLength?: number,
-      locale?: string,
-      workflowId?: number,
-      pinExpiry?: number,
-      // Silent authentication parameters
-      appHash?: string,
-      sdkVersion?: string,
-      deviceModel?: string,
-      osVersion?: string,
-      countryCode?: string,
-      sourceIp?: string,
-      silentAuthTimeoutSecs?: number
-    } = {}
-  ) {
+  constructor(secretName: string = 'vonage/api-credentials') {
+    this.secretsManager = SecretsManager.getInstance();
+    this.secretName = secretName;
+  }
+  
+  /**
+   * Request a verification code
+   * @param options - Verification request options
+   * @returns Promise with verification request response
+   */
+  async requestVerification(options: VerifyRequestOptions): Promise<VerifyRequestResponse> {
     try {
-      console.log(`Requesting verification for number: ${number}`);
+      console.log(`Requesting verification for number: ${options.number}`);
       
-      // Get the Verify client
-      const verify = await getVerifyClient();
+      // Get Vonage credentials from Secrets Manager
+      const credentials = await this.getVonageCredentials();
       
-      // Prepare verification parameters
-      const verifyParams: any = {
-        number,
-        brand,
-        // Default to workflow_id 1 (Silent Auth -> SMS -> Voice)
-        workflow_id: 1
-      };
+      // Initialize Vonage client
+      const vonage = new Vonage({
+        apiKey: credentials.apiKey,
+        apiSecret: credentials.apiSecret
+      });
       
-      // Add optional parameters if they exist
-      if (options.codeLength) verifyParams.code_length = options.codeLength;
-      if (options.locale) verifyParams.locale = options.locale;
-      if (options.workflowId) verifyParams.workflow_id = options.workflowId;
-      if (options.pinExpiry) verifyParams.pin_expiry = options.pinExpiry;
+      const verify = new Verify(vonage);
       
-      // Add silent authentication parameters
-      if (options.appHash) verifyParams.app_hash = options.appHash;
-      if (options.sdkVersion) verifyParams.sdk_version = options.sdkVersion;
-      if (options.deviceModel) verifyParams.device_model = options.deviceModel;
-      if (options.osVersion) verifyParams.os_version = options.osVersion;
-      if (options.countryCode) verifyParams.country_code = options.countryCode;
-      if (options.sourceIp) verifyParams.source_ip = options.sourceIp;
-      if (options.silentAuthTimeoutSecs) verifyParams.silent_auth_timeout_secs = options.silentAuthTimeoutSecs;
+      // Request verification
+      const response = await verify.request({
+        number: options.number,
+        brand: options.brand,
+        workflow: options.workflow,
+        locale: options.locale,
+        code_length: options.codeLength,
+        pin_expiry: options.pinExpiry,
+        next_event_wait: options.nextEventWait
+      });
       
-      // Request verification using the start method
-      const response = await verify.start(verifyParams);
-      console.log('Verification requested successfully:', JSON.stringify(response, null, 2));
+      console.log('Verification request response:', JSON.stringify(response, null, 2));
       
-      // Format the response
+      // Format response
       return {
-        requestId: response.requestId,
-        status: '0', // Success status for compatibility
-        errorText: null,
-        network: null,
-        timestamp: new Date().toISOString(),
-        // Include silent auth specific fields if present
+        requestId: response.request_id || '',
+        status: response.status === '0' ? 'success' : 'failed',
+        errorCode: response.error_text ? response.status : undefined,
+        errorText: response.error_text || undefined,
         silentAuth: response.silent_auth === true,
         nextStep: response.next_step || null
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error requesting verification:', error);
-      return {
-        requestId: null,
-        status: error.status || '1', // Error status
-        errorText: error.message || 'Unknown error',
-        network: null,
-        timestamp: new Date().toISOString(),
-        silentAuth: false,
-        nextStep: null
-      };
+      throw error;
     }
   }
   
   /**
-   * Check a verification code provided by the user
-   * 
-   * @param requestId - The request ID from the verification request
-   * @param code - The verification code entered by the user
-   * @returns Promise with verification check result
+   * Check a verification code
+   * @param options - Verification check options
+   * @returns Promise with verification check response
    */
-  async checkVerification(requestId: string, code: string) {
+  async checkVerification(options: VerifyCheckOptions): Promise<VerifyCheckResponse> {
     try {
-      console.log(`Checking verification code for request: ${requestId}`);
+      console.log(`Checking verification code for request: ${options.requestId}`);
       
-      // Get the Verify client
-      const verify = await getVerifyClient();
+      // Get Vonage credentials from Secrets Manager
+      const credentials = await this.getVonageCredentials();
       
-      // Check the verification code
-      const response = await verify.check({
-        request_id: requestId,
-        code: code
+      // Initialize Vonage client
+      const vonage = new Vonage({
+        apiKey: credentials.apiKey,
+        apiSecret: credentials.apiSecret
       });
-      console.log('Verification check result:', JSON.stringify(response, null, 2));
       
-      // Format the response
+      const verify = new Verify(vonage);
+      
+      // Check verification code
+      const response = await verify.check(options.requestId, options.code);
+      
+      console.log('Verification check response:', JSON.stringify(response, null, 2));
+      
+      // Format response
       return {
-        requestId: requestId,
-        status: response.status || '0',
+        requestId: options.requestId,
+        status: response.status === '0' ? 'success' : 'failed',
+        errorCode: response.error_text ? response.status : undefined,
         errorText: response.error_text || null,
         price: response.price || null,
         currency: response.currency || null,
-        timestamp: new Date().toISOString(),
-        success: response.status === '0'
+        timestamp: new Date().toISOString()
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error checking verification code:', error);
-      return {
-        requestId: requestId,
-        status: error.status || '1', // Error status
-        errorText: error.message || 'Invalid code',
-        price: null,
-        currency: null,
-        timestamp: new Date().toISOString(),
-        success: false
-      };
+      throw error;
     }
   }
   
   /**
-   * Cancel an ongoing verification request
-   * 
-   * @param requestId - The request ID from the verification request
-   * @returns Promise with cancellation result
+   * Cancel a verification request
+   * @param requestId - Verification request ID
+   * @returns Promise with verification cancel response
    */
-  async cancelVerification(requestId: string) {
+  async cancelVerification(requestId: string): Promise<VerifyCancelResponse> {
     try {
       console.log(`Cancelling verification request: ${requestId}`);
       
-      // Get the Verify client
-      const verify = await getVerifyClient();
+      // Get Vonage credentials from Secrets Manager
+      const credentials = await this.getVonageCredentials();
       
-      // Cancel the verification
-      const response = await verify.cancel({
-        request_id: requestId
+      // Initialize Vonage client
+      const vonage = new Vonage({
+        apiKey: credentials.apiKey,
+        apiSecret: credentials.apiSecret
       });
-      console.log('Verification cancellation result:', JSON.stringify(response, null, 2));
       
-      // Format the response
+      const verify = new Verify(vonage);
+      
+      // Cancel verification request
+      const response = await verify.cancel(requestId);
+      
+      console.log('Verification cancel response:', JSON.stringify(response, null, 2));
+      
+      // Format response
       return {
         requestId: requestId,
-        status: response.status || '0',
+        status: response.status === '0' ? 'success' : 'failed',
+        errorCode: response.error_text ? response.status : undefined,
         errorText: response.error_text || null,
-        timestamp: new Date().toISOString(),
-        success: response.status === '0'
+        timestamp: new Date().toISOString()
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error cancelling verification:', error);
-      return {
-        requestId: requestId,
-        status: error.status || '1', // Error status
-        errorText: error.message || 'Unknown error',
-        timestamp: new Date().toISOString(),
-        success: false
-      };
+      throw error;
+    }
+  }
+  
+  /**
+   * Get Vonage credentials from Secrets Manager
+   * @returns Promise with API key and secret
+   */
+  private async getVonageCredentials(): Promise<{ apiKey: string; apiSecret: string }> {
+    try {
+      return await this.secretsManager.getVonageCredentials(this.secretName);
+    } catch (error) {
+      console.error('Error getting Vonage credentials:', error);
+      
+      // Fallback to environment variables if available (for backward compatibility)
+      if (process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET) {
+        console.log('Using Vonage credentials from environment variables');
+        return {
+          apiKey: process.env.VONAGE_API_KEY,
+          apiSecret: process.env.VONAGE_API_SECRET
+        };
+      }
+      
+      throw new Error('Vonage API credentials not found');
     }
   }
 }
