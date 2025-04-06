@@ -15,6 +15,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // Parse request body
     const body = event.body ? JSON.parse(event.body) : {};
     
+    // Get client IP from event if available
+    const sourceIp = event.requestContext?.identity?.sourceIp || null;
+    
     // Validate with Joi
     const schema = Joi.object({
       number: Joi.string().required().pattern(/^\+[1-9]\d{1,14}$/)
@@ -24,7 +27,14 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
       codeLength: Joi.number().integer().min(4).max(10),
       locale: Joi.string(),
       workflowId: Joi.number().integer(),
-      pinExpiry: Joi.number().integer()
+      pinExpiry: Joi.number().integer(),
+      // Silent authentication parameters
+      appHash: Joi.string(),
+      sdkVersion: Joi.string(),
+      deviceModel: Joi.string(),
+      osVersion: Joi.string(),
+      countryCode: Joi.string().length(2),
+      silentAuthTimeoutSecs: Joi.number().integer().min(5).max(30)
     });
     
     const { error, value } = schema.validate(body);
@@ -44,10 +54,20 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const verifyService = new VerifyService();
     const options: any = {};
     
+    // Standard verification options
     if (value.codeLength) options.codeLength = value.codeLength;
     if (value.locale) options.locale = value.locale;
     if (value.workflowId) options.workflowId = value.workflowId;
     if (value.pinExpiry) options.pinExpiry = value.pinExpiry;
+    
+    // Silent authentication options
+    if (value.appHash) options.appHash = value.appHash;
+    if (value.sdkVersion) options.sdkVersion = value.sdkVersion;
+    if (value.deviceModel) options.deviceModel = value.deviceModel;
+    if (value.osVersion) options.osVersion = value.osVersion;
+    if (value.countryCode) options.countryCode = value.countryCode;
+    if (sourceIp) options.sourceIp = sourceIp;
+    if (value.silentAuthTimeoutSecs) options.silentAuthTimeoutSecs = value.silentAuthTimeoutSecs;
     
     const result = await verifyService.requestVerification(
       value.number,
@@ -67,8 +87,11 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
         requestId: result.requestId,
         status: result.status,
         phoneNumber: value.number,
-        message: `Verification code sent to ${value.number}`,
-        nextStep: 'Check the verification code using the /check-verification endpoint with the requestId and code'
+        silentAuth: result.silentAuth,
+        nextStep: result.nextStep || 'Check the verification code using the /check-verification endpoint with the requestId and code',
+        message: result.silentAuth 
+          ? 'Silent authentication in progress' 
+          : `Verification code sent to ${value.number}`
       })
     };
   } catch (error: any) {

@@ -19,7 +19,15 @@ export class VerifyService {
       codeLength?: number,
       locale?: string,
       workflowId?: number,
-      pinExpiry?: number
+      pinExpiry?: number,
+      // Silent authentication parameters
+      appHash?: string,
+      sdkVersion?: string,
+      deviceModel?: string,
+      osVersion?: string,
+      countryCode?: string,
+      sourceIp?: string,
+      silentAuthTimeoutSecs?: number
     } = {}
   ) {
     try {
@@ -31,14 +39,25 @@ export class VerifyService {
       // Prepare verification parameters
       const verifyParams: any = {
         number,
-        brand
+        brand,
+        // Default to workflow_id 1 (Silent Auth -> SMS -> Voice)
+        workflow_id: 1
       };
       
       // Add optional parameters if they exist
-      if (options.codeLength) verifyParams.codeLength = options.codeLength;
+      if (options.codeLength) verifyParams.code_length = options.codeLength;
       if (options.locale) verifyParams.locale = options.locale;
-      if (options.workflowId) verifyParams.workflowId = options.workflowId;
-      if (options.pinExpiry) verifyParams.pinExpiry = options.pinExpiry;
+      if (options.workflowId) verifyParams.workflow_id = options.workflowId;
+      if (options.pinExpiry) verifyParams.pin_expiry = options.pinExpiry;
+      
+      // Add silent authentication parameters
+      if (options.appHash) verifyParams.app_hash = options.appHash;
+      if (options.sdkVersion) verifyParams.sdk_version = options.sdkVersion;
+      if (options.deviceModel) verifyParams.device_model = options.deviceModel;
+      if (options.osVersion) verifyParams.os_version = options.osVersion;
+      if (options.countryCode) verifyParams.country_code = options.countryCode;
+      if (options.sourceIp) verifyParams.source_ip = options.sourceIp;
+      if (options.silentAuthTimeoutSecs) verifyParams.silent_auth_timeout_secs = options.silentAuthTimeoutSecs;
       
       // Request verification using the start method
       const response = await verify.start(verifyParams);
@@ -50,7 +69,10 @@ export class VerifyService {
         status: '0', // Success status for compatibility
         errorText: null,
         network: null,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        // Include silent auth specific fields if present
+        silentAuth: response.silent_auth === true,
+        nextStep: response.next_step || null
       };
     } catch (error: any) {
       console.error('Error requesting verification:', error);
@@ -59,7 +81,9 @@ export class VerifyService {
         status: error.status || '1', // Error status
         errorText: error.message || 'Unknown error',
         network: null,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        silentAuth: false,
+        nextStep: null
       };
     }
   }

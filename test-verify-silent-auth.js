@@ -3,7 +3,7 @@ const { Auth } = require('@vonage/auth');
 const { Verify } = require('@vonage/verify');
 
 // Configuration
-const PHONE_NUMBER = '+1234567890'; // Specific test phone number
+const PHONE_NUMBER = '+1234567890'; // Test phone number
 const BRAND_NAME = 'BedrockTest';
 
 console.log(`Using phone number: ${PHONE_NUMBER}`);
@@ -19,9 +19,9 @@ const verify = new Verify(auth);
 // Get command line arguments
 const args = process.argv.slice(2);
 if (args.length < 1) {
-  console.error('Usage: node test-verify-specific.js <command> [params...]');
+  console.error('Usage: node test-verify-silent-auth.js <command> [params...]');
   console.error('Commands:');
-  console.error('  request - Request a verification code');
+  console.error('  request - Request a verification with silent auth');
   console.error('  check <requestId> <code> - Check a verification code');
   console.error('  cancel <requestId> - Cancel a verification request');
   process.exit(1);
@@ -31,14 +31,26 @@ const command = args[0];
 
 async function requestVerification() {
   try {
-    console.log('=== TESTING VONAGE VERIFY API - REQUEST ===');
+    console.log('=== TESTING VONAGE VERIFY API WITH SILENT AUTH - REQUEST ===');
     console.log(`Requesting verification for phone number: ${PHONE_NUMBER}`);
     
-    // Request verification
+    // Mock device information for silent auth
+    const deviceInfo = {
+      app_hash: 'abcdefghijklmnopqrstuvwxyz123456', // Example app hash
+      sdk_version: '2.3.0',                         // Example SDK version
+      device_model: 'iPhone 13',                    // Example device model
+      os_version: 'iOS 16.5',                       // Example OS version
+      country_code: 'US',                           // Example country code
+      source_ip: '203.0.113.1',                     // Example IP address
+      silent_auth_timeout_secs: 10                  // Timeout for silent auth in seconds
+    };
+    
+    // Request verification with silent auth (workflow_id: 1)
     const result = await verify.start({
       number: PHONE_NUMBER,
       brand: BRAND_NAME,
-      workflow_id: 1 // Use Silent Auth -> SMS -> Voice call
+      workflow_id: 1, // Silent Auth -> SMS -> Voice
+      ...deviceInfo
     });
     
     console.log('Response:', JSON.stringify(result, null, 2));
@@ -49,23 +61,24 @@ async function requestVerification() {
       
       if (result.silent_auth === true) {
         console.log('\n🔍 Silent authentication is in progress!');
+        console.log('Wait for the silent auth to complete or timeout...');
       } else {
-        console.log('\n📱 SMS verification initiated.');
+        console.log('\n📱 Silent authentication not available, SMS verification initiated.');
       }
       
       console.log('\nUse this request ID to check the verification code:');
-      console.log(`node test-verify-specific.js check ${result.requestId} <code>`);
+      console.log(`node test-verify-silent-auth.js check ${result.requestId} <code>`);
       
       // Save request ID to a file for later use
-      require('fs').writeFileSync('last-request-id-specific.txt', result.requestId);
-      console.log('\nRequest ID saved to last-request-id-specific.txt');
+      require('fs').writeFileSync('last-request-id-silent.txt', result.requestId);
+      console.log('\nRequest ID saved to last-request-id-silent.txt');
     } else {
       console.log('\n❌ Verification request failed!');
     }
     
     return result;
   } catch (error) {
-    console.error('\n❌ Error testing verify API:');
+    console.error('\n❌ Error testing verify API with silent auth:');
     console.error(error);
     throw error;
   }
@@ -139,11 +152,11 @@ async function main() {
           
           if (!requestId) {
             try {
-              requestId = require('fs').readFileSync('last-request-id-specific.txt', 'utf8').trim();
+              requestId = require('fs').readFileSync('last-request-id-silent.txt', 'utf8').trim();
               console.log(`Using request ID from file: ${requestId}`);
             } catch (error) {
               console.error('Error reading request ID from file.');
-              console.error('Usage: node test-verify-specific.js check <requestId> <code>');
+              console.error('Usage: node test-verify-silent-auth.js check <requestId> <code>');
               process.exit(1);
             }
           }
@@ -173,11 +186,11 @@ async function main() {
           
           if (!requestId) {
             try {
-              requestId = require('fs').readFileSync('last-request-id-specific.txt', 'utf8').trim();
+              requestId = require('fs').readFileSync('last-request-id-silent.txt', 'utf8').trim();
               console.log(`Using request ID from file: ${requestId}`);
             } catch (error) {
               console.error('Error reading request ID from file.');
-              console.error('Usage: node test-verify-specific.js cancel <requestId>');
+              console.error('Usage: node test-verify-silent-auth.js cancel <requestId>');
               process.exit(1);
             }
           }
@@ -189,7 +202,7 @@ async function main() {
         break;
       default:
         console.error(`Unknown command: ${command}`);
-        console.error('Usage: node test-verify-specific.js <command> [params...]');
+        console.error('Usage: node test-verify-silent-auth.js <command> [params...]');
         console.error('Commands: request, check, cancel');
         process.exit(1);
     }

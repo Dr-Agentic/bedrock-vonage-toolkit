@@ -1,95 +1,146 @@
 # Bedrock Vonage Toolkit
 
-A toolkit for integrating Vonage APIs with AWS Bedrock AI agents.
+A serverless toolkit for integrating Vonage (formerly Nexmo) communication services with AWS Bedrock applications.
 
 ## Features
 
-- Phone number verification using Vonage Verify API
-- SMS messaging using Vonage SMS API
-- Phone number insights using Vonage Number Insight API
-- Integration with AWS Bedrock AI agents
+- **SMS Messaging**: Send SMS messages to users
+- **Phone Verification**: Verify phone numbers using multiple methods
+  - Silent Authentication (no user interaction required)
+  - SMS Verification Codes
+  - Voice Call Verification
+- **Serverless Architecture**: Deploy as AWS Lambda functions
+- **Direct HTTP Fallback**: Alternative implementation for SDK issues
 
-## Setup
+## Phone Verification Workflows
 
-### Prerequisites
+This toolkit supports multiple verification workflows:
 
-- Node.js 18 or later
-- AWS account with Bedrock access
-- Vonage API account
+### Comprehensive Workflow (Default)
+
+The most comprehensive workflow (workflow_id: 1) includes:
+
+1. **Silent Authentication**: Attempts to verify the user without any interaction
+   - Uses mobile network information to verify the user's SIM card
+   - No SMS or notification is sent to the user
+   - Fastest and most seamless verification method when available
+
+2. **SMS Verification**: If silent authentication fails or times out
+   - Sends a verification code via SMS
+   - User must enter the code to complete verification
+
+3. **Voice Call**: If SMS verification times out
+   - Places an automated voice call to the user
+   - Speaks the verification code
+
+### SMS + Voice Workflow
+
+A simpler workflow (workflow_id: 6) includes:
+
+1. **SMS Verification**: Sends a verification code via SMS
+2. **Voice Call**: If SMS verification times out, places an automated call
+
+## Silent Authentication Requirements
+
+To use silent authentication:
+
+- Mobile device must have an active cellular connection
+- App must implement the Vonage Verify SDK
+- Additional parameters must be provided:
+  - `app_hash`: Application hash for Android devices
+  - `sdk_version`: Version of the Verify SDK
+  - `device_model`: User's device model
+  - `os_version`: Operating system version
+  - `country_code`: Two-letter country code
+  - `source_ip`: User's IP address
+  - `silent_auth_timeout_secs`: Timeout for silent auth (5-30 seconds)
+
+## Usage
 
 ### Installation
-
-1. Clone the repository
-2. Install dependencies:
 
 ```bash
 npm install
 ```
 
-3. Create a `.env` file with your Vonage API credentials:
+### Configuration
+
+Create a `.env` file with your Vonage API credentials:
 
 ```
 VONAGE_API_KEY=your_api_key
 VONAGE_API_SECRET=your_api_secret
-TEST_PHONE_NUMBER=your_test_phone_number
 ```
 
-## Usage
+### Testing
 
-### Local Development
-
-Start the serverless offline server:
+#### Test Silent Authentication Workflow
 
 ```bash
-npx serverless offline
+node test-verify-silent-auth.js request
 ```
 
-### Testing the Verify API
-
-Use the provided test scripts to test the Verify API:
+#### Test Direct HTTP Implementation
 
 ```bash
-# Test direct API calls
-node test-verify-modern.js request
-node test-verify-modern.js check <requestId> <code>
-node test-verify-modern.js cancel <requestId>
+node test-direct-silent-auth.js
+```
 
-# Test through serverless
-node test-local-serverless-modern.js request
-node test-local-serverless-modern.js check <requestId> <code>
-node test-local-serverless-modern.js cancel <requestId>
+#### Test Standard Verification
+
+```bash
+node test-verify-specific.js request
+node test-verify-specific.js check <requestId> <code>
 ```
 
 ### Deployment
 
-Deploy to AWS:
+Deploy to AWS using the Serverless Framework:
 
 ```bash
-npx serverless deploy
+npm run deploy
 ```
 
-## API Endpoints
+## API Reference
 
-### Verify API
+### Request Verification
 
-- `POST /request-verification`: Request a verification code
-  - Body: `{ "number": "+1234567890", "brand": "YourApp" }`
-  
-- `POST /check-verification`: Check a verification code
-  - Body: `{ "requestId": "abcd1234", "code": "1234" }`
-  
-- `POST /cancel-verification`: Cancel a verification request
-  - Body: `{ "requestId": "abcd1234" }`
+```
+POST /request-verification
 
-### SMS API
+{
+  "number": "+12025550123",
+  "brand": "YourAppName",
+  "workflowId": 1,
+  "appHash": "abcdefghijklmnopqrstuvwxyz123456",
+  "sdkVersion": "2.3.0",
+  "deviceModel": "iPhone 13",
+  "osVersion": "iOS 16.5",
+  "countryCode": "US",
+  "silentAuthTimeoutSecs": 10
+}
+```
 
-- `POST /send-sms`: Send an SMS message
-  - Body: `{ "from": "YourApp", "to": "+1234567890", "text": "Hello world" }`
+### Check Verification
 
-### Number Insight API
+```
+POST /check-verification
 
-- `POST /number-insight`: Get insights about a phone number
-  - Body: `{ "number": "+1234567890" }`
+{
+  "requestId": "abcd1234efgh5678",
+  "code": "1234"
+}
+```
+
+### Cancel Verification
+
+```
+POST /cancel-verification
+
+{
+  "requestId": "abcd1234efgh5678"
+}
+```
 
 ## License
 
