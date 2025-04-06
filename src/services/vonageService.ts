@@ -1,11 +1,11 @@
-import { getVonageClient } from '../config/vonage';
+import axios from 'axios';
 
 /**
- * Service for interacting with Vonage Number Insight API
+ * Service for interacting with Vonage APIs
  */
 export class VonageService {
   /**
-   * Get comprehensive number insights
+   * Get comprehensive number insights using direct API call
    * 
    * @param number - Phone number to analyze (E.164 format)
    * @returns Promise with detailed number insights
@@ -14,14 +14,16 @@ export class VonageService {
     try {
       console.log(`Getting advanced insights for number: ${number}`);
       
-      // Get the Vonage client
-      const vonage = await getVonageClient();
+      // Get Vonage credentials
+      const credentials = await this.getVonageCredentials();
       
-      // Use the Number Insights API to get advanced information
-      const insights = await vonage.numberInsights.get({
-        level: 'advancedSync',
-        number: number
-      });
+      // Make direct API call to Vonage Number Insight API
+      const url = `https://api.nexmo.com/ni/advanced/json?api_key=${credentials.apiKey}&api_secret=${credentials.apiSecret}&number=${number}`;
+      
+      console.log(`Making request to: ${url}`);
+      
+      const response = await axios.get(url);
+      const insights = response.data;
       
       console.log('Advanced insight response:', JSON.stringify(insights, null, 2));
       
@@ -76,5 +78,21 @@ export class VonageService {
       console.error('Error getting advanced number insight:', error);
       throw error;
     }
+  }
+  
+  /**
+   * Get Vonage credentials from environment variables
+   * @returns Promise with API key and secret
+   */
+  private async getVonageCredentials(): Promise<{ apiKey: string; apiSecret: string }> {
+    // For local development, use environment variables
+    if (process.env.VONAGE_API_KEY && process.env.VONAGE_API_SECRET) {
+      return {
+        apiKey: process.env.VONAGE_API_KEY,
+        apiSecret: process.env.VONAGE_API_SECRET
+      };
+    }
+    
+    throw new Error('Vonage API credentials not found');
   }
 }
