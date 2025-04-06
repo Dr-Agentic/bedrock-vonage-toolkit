@@ -3,27 +3,36 @@ import { SecretsManager, VonageCredentials } from '../../src/utils/secretsManage
 
 // Mock AWS SDK
 jest.mock('aws-sdk', () => {
-  const mockGetSecretValue = jest.fn();
+  const mockGetSecretValuePromise = jest.fn();
   return {
     SecretsManager: jest.fn().mockImplementation(() => ({
-      getSecretValue: mockGetSecretValue,
-      promise: jest.fn()
+      getSecretValue: jest.fn().mockReturnValue({
+        promise: mockGetSecretValuePromise
+      })
     }))
   };
 });
 
 describe('SecretsManager', () => {
   let secretsManager: SecretsManager;
-  const mockAwsSecretsManager = AWS.SecretsManager as jest.MockedClass<typeof AWS.SecretsManager>;
+  let mockAwsSecretsManager: any;
+  let mockGetSecretValuePromise: jest.Mock;
   
   beforeEach(() => {
     jest.clearAllMocks();
-    secretsManager = SecretsManager.getInstance();
     
-    // Reset environment variables
-    process.env.NODE_ENV = 'test';
-    process.env.VONAGE_API_KEY = 'test_api_key';
-    process.env.VONAGE_API_SECRET = 'test_api_secret';
+    // Reset the singleton instance for each test
+    (SecretsManager as any).instance = undefined;
+    
+    // Get the mocked AWS.SecretsManager constructor
+    mockAwsSecretsManager = AWS.SecretsManager as jest.MockedClass<typeof AWS.SecretsManager>;
+    
+    // Get the mocked promise function
+    const mockInstance = (mockAwsSecretsManager as jest.Mock).mock.results[0]?.value;
+    mockGetSecretValuePromise = mockInstance?.getSecretValue().promise;
+    
+    // Create a new instance for testing
+    secretsManager = SecretsManager.getInstance();
   });
   
   describe('getInstance', () => {
@@ -36,8 +45,14 @@ describe('SecretsManager', () => {
     
     it('should create a new instance with specified region', () => {
       const region = 'eu-west-1';
-      const instance = SecretsManager.getInstance(region);
       
+      // Reset the singleton instance
+      (SecretsManager as any).instance = undefined;
+      
+      // Create a new instance with the specified region
+      SecretsManager.getInstance(region);
+      
+      // Check that AWS.SecretsManager was constructed with the correct region
       expect(mockAwsSecretsManager).toHaveBeenCalledWith({ region });
     });
   });
@@ -47,20 +62,17 @@ describe('SecretsManager', () => {
       const secretName = 'test/secret';
       const mockSecret = { key: 'value' };
       
-      // Mock AWS SDK response
-      const mockPromise = jest.fn().mockResolvedValue({
+      // Mock the AWS SDK response
+      mockGetSecretValuePromise.mockResolvedValueOnce({
         SecretString: JSON.stringify(mockSecret)
       });
       
-      const mockGetSecretValue = jest.fn().mockReturnValue({
-        promise: mockPromise
-      });
-      
-      (mockAwsSecretsManager.prototype.getSecretValue as jest.Mock) = mockGetSecretValue;
-      
       const result = await secretsManager.getSecret(secretName);
       
-      expect(mockGetSecretValue).toHaveBeenCalledWith({ SecretId: secretName });
+      // Verify AWS SDK was called correctly
+      expect(mockAwsSecretsManager.mock.instances[0].getSecretValue)
+        .toHaveBeenCalledWith({ SecretId: secretName });
+      
       expect(result).toEqual(mockSecret);
     });
     
@@ -68,16 +80,10 @@ describe('SecretsManager', () => {
       const secretName = 'test/secret';
       const mockSecret = { key: 'value' };
       
-      // Mock AWS SDK response
-      const mockPromise = jest.fn().mockResolvedValue({
+      // Mock the AWS SDK response
+      mockGetSecretValuePromise.mockResolvedValueOnce({
         SecretString: JSON.stringify(mockSecret)
       });
-      
-      const mockGetSecretValue = jest.fn().mockReturnValue({
-        promise: mockPromise
-      });
-      
-      (mockAwsSecretsManager.prototype.getSecretValue as jest.Mock) = mockGetSecretValue;
       
       // First call should fetch from AWS
       await secretsManager.getSecret(secretName);
@@ -85,31 +91,31 @@ describe('SecretsManager', () => {
       // Second call should use cache
       await secretsManager.getSecret(secretName);
       
-      expect(mockGetSecretValue).toHaveBeenCalledTimes(1);
+      // Verify AWS SDK was called only once
+      expect(mockGetSecretValuePromise).toHaveBeenCalledTimes(1);
     });
     
     it('should force refresh when specified', async () => {
       const secretName = 'test/secret';
       const mockSecret = { key: 'value' };
       
-      // Mock AWS SDK response
-      const mockPromise = jest.fn().mockResolvedValue({
+      // Mock the AWS SDK response
+      mockGetSecretValuePromise.mockResolvedValueOnce({
         SecretString: JSON.stringify(mockSecret)
       });
-      
-      const mockGetSecretValue = jest.fn().mockReturnValue({
-        promise: mockPromise
+      mockGetSecretValuePromise.mockResolvedValueOnce({
+        SecretString: JSON.stringify({ key: 'updated' })
       });
-      
-      (mockAwsSecretsManager.prototype.getSecretValue as jest.Mock) = mockGetSecretValue;
       
       // First call should fetch from AWS
       await secretsManager.getSecret(secretName);
       
       // Second call with forceRefresh should fetch again
-      await secretsManager.getSecret(secretName, true);
+      const result = await secretsManager.getSecret(secretName, true);
       
-      expect(mockGetSecretValue).toHaveBeenCalledTimes(2);
+      // Verify AWS SDK was called twice
+      expect(mockGetSecretValuePromise).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({ key: 'updated' });
     });
     
     it('should handle SecretBinary format', async () => {
@@ -117,16 +123,10 @@ describe('SecretsManager', () => {
       const mockSecret = { key: 'value' };
       const secretBinary = Buffer.from(JSON.stringify(mockSecret)).toString('base64');
       
-      // Mock AWS SDK response
-      const mockPromise = jest.fn().mockResolvedValue({
+      // Mock the AWS SDK response
+      mockGetSecretValuePromise.mockResolvedValueOnce({
         SecretBinary: secretBinary
       });
-      
-      const mockGetSecretValue = jest.fn().mockReturnValue({
-        promise: mockPromise
-      });
-      
-      (mockAwsSecretsManager.prototype.getSecretValue as jest.Mock) = mockGetSecretValue;
       
       const result = await secretsManager.getSecret(secretName);
       
@@ -137,19 +137,18 @@ describe('SecretsManager', () => {
       const secretName = 'test/secret';
       
       // Mock AWS SDK response with no value
-      const mockPromise = jest.fn().mockResolvedValue({});
-      
-      const mockGetSecretValue = jest.fn().mockReturnValue({
-        promise: mockPromise
-      });
-      
-      (mockAwsSecretsManager.prototype.getSecretValue as jest.Mock) = mockGetSecretValue;
+      mockGetSecretValuePromise.mockResolvedValueOnce({});
       
       await expect(secretsManager.getSecret(secretName)).rejects.toThrow(`Secret ${secretName} has no value`);
     });
     
     it('should use environment variables in test environment', async () => {
       const secretName = 'vonage/api-credentials';
+      
+      // Set environment variables
+      process.env.VONAGE_API_KEY = 'test_api_key';
+      process.env.VONAGE_API_SECRET = 'test_api_secret';
+      process.env.NODE_ENV = 'test';
       
       const result = await secretsManager.getSecret<VonageCredentials>(secretName);
       
@@ -159,7 +158,7 @@ describe('SecretsManager', () => {
       });
       
       // AWS SDK should not be called
-      expect(mockAwsSecretsManager.prototype.getSecretValue).not.toHaveBeenCalled();
+      expect(mockGetSecretValuePromise).not.toHaveBeenCalled();
     });
   });
   

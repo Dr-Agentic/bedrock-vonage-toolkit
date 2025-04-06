@@ -3,15 +3,20 @@ import { VonageService } from '../../src/services/vonageService';
 
 // Mock VonageService
 jest.mock('../../src/services/vonageService');
-const MockedVonageService = VonageService as jest.MockedClass<typeof VonageService>;
 
 describe('NumberInsightAction', () => {
   let numberInsightAction: NumberInsightAction;
-  const mockVonageService = new MockedVonageService();
+  let mockVonageService: jest.Mocked<VonageService>;
   const testPhoneNumber = '+12025550142';
   
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Create a mocked VonageService
+    mockVonageService = {
+      getAdvancedNumberInsight: jest.fn()
+    } as unknown as jest.Mocked<VonageService>;
+    
     numberInsightAction = new NumberInsightAction(mockVonageService);
   });
   
@@ -65,7 +70,7 @@ describe('NumberInsightAction', () => {
         rawData: {}
       };
       
-      mockVonageService.getAdvancedNumberInsight.mockResolvedValueOnce(mockInsightData);
+      mockVonageService.getAdvancedNumberInsight.mockResolvedValue(mockInsightData);
       
       const result = await numberInsightAction.execute({ phoneNumber: testPhoneNumber });
       
@@ -92,7 +97,7 @@ describe('NumberInsightAction', () => {
     
     it('should handle API errors', async () => {
       const errorMessage = 'API request failed';
-      mockVonageService.getAdvancedNumberInsight.mockRejectedValueOnce(new Error(errorMessage));
+      mockVonageService.getAdvancedNumberInsight.mockRejectedValue(new Error(errorMessage));
       
       const result = await numberInsightAction.execute({ phoneNumber: testPhoneNumber });
       

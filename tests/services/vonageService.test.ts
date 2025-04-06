@@ -7,22 +7,24 @@ jest.mock('axios');
 jest.mock('../../src/utils/secretsManager');
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
-const MockedSecretsManager = SecretsManager as jest.MockedClass<typeof SecretsManager>;
 
 describe('VonageService', () => {
   let vonageService: VonageService;
   const testPhoneNumber = '+12025550142';
+  let mockSecretsManager: any;
   
   beforeEach(() => {
     jest.clearAllMocks();
     
     // Mock SecretsManager getInstance
-    MockedSecretsManager.getInstance.mockReturnValue({
+    mockSecretsManager = {
       getVonageCredentials: jest.fn().mockResolvedValue({
         apiKey: 'test_api_key',
         apiSecret: 'test_api_secret'
       })
-    } as unknown as SecretsManager);
+    };
+    
+    (SecretsManager.getInstance as jest.Mock).mockReturnValue(mockSecretsManager);
     
     vonageService = new VonageService();
   });
@@ -133,9 +135,8 @@ describe('VonageService', () => {
       await vonageService.getAdvancedNumberInsight(testPhoneNumber);
       
       // Verify SecretsManager was used to get credentials
-      const secretsManagerInstance = MockedSecretsManager.getInstance();
-      expect(secretsManagerInstance.getVonageCredentials).toHaveBeenCalledTimes(1);
-      expect(secretsManagerInstance.getVonageCredentials).toHaveBeenCalledWith('vonage/api-credentials');
+      expect(mockSecretsManager.getVonageCredentials).toHaveBeenCalledTimes(1);
+      expect(mockSecretsManager.getVonageCredentials).toHaveBeenCalledWith('vonage/api-credentials');
     });
     
     it('should fall back to environment variables if SecretsManager fails', async () => {
@@ -148,19 +149,14 @@ describe('VonageService', () => {
       process.env.VONAGE_API_SECRET = 'env_api_secret';
       
       // Mock SecretsManager to throw error
-      MockedSecretsManager.getInstance.mockReturnValue({
-        getVonageCredentials: jest.fn().mockRejectedValue(new Error('Secret not found'))
-      } as unknown as SecretsManager);
-      
-      // Create new service instance
-      const service = new VonageService();
+      mockSecretsManager.getVonageCredentials.mockRejectedValueOnce(new Error('Secret not found'));
       
       // Mock axios response
       mockedAxios.get.mockResolvedValueOnce({
         data: { status: 0, country_name: 'Test' }
       });
       
-      await service.getAdvancedNumberInsight(testPhoneNumber);
+      await vonageService.getAdvancedNumberInsight(testPhoneNumber);
       
       // Verify axios was called with env var credentials
       expect(mockedAxios.get).toHaveBeenCalledWith(
@@ -183,15 +179,10 @@ describe('VonageService', () => {
       delete process.env.VONAGE_API_SECRET;
       
       // Mock SecretsManager to throw error
-      MockedSecretsManager.getInstance.mockReturnValue({
-        getVonageCredentials: jest.fn().mockRejectedValue(new Error('Secret not found'))
-      } as unknown as SecretsManager);
-      
-      // Create new service instance
-      const service = new VonageService();
+      mockSecretsManager.getVonageCredentials.mockRejectedValueOnce(new Error('Secret not found'));
       
       // Expect error
-      await expect(service.getAdvancedNumberInsight(testPhoneNumber))
+      await expect(vonageService.getAdvancedNumberInsight(testPhoneNumber))
         .rejects.toThrow('Vonage API credentials not found');
       
       // Restore original env vars
