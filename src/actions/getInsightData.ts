@@ -90,12 +90,14 @@ export const handler = async (event: any, context: Context): Promise<any> => {
         },
         isValid: insightData.validity.valid,
         riskScore: insightData.riskScore ? insightData.riskScore.score : 0,
-        recommendation: insightData.riskScore ? insightData.riskScore.recommendation : 'unknown'
+        recommendation: insightData.riskScore ? insightData.riskScore.recommendation : 'unknown',
+        // Add a simple text summary for the agent to use
+        summary: `This is a ${insightData.validity.valid ? 'valid' : 'invalid'} phone number from ${insightData.basicInfo.countryName}. It's associated with ${insightData.carrierInfo.name} and is a ${insightData.carrierInfo.networkType} number. The risk assessment shows a ${insightData.riskScore && insightData.riskScore.score > 50 ? 'high' : 'low'} risk score.`
       };
       
       console.log('Sending response to Bedrock:', JSON.stringify(responseData, null, 2));
       
-      // Return formatted response for Bedrock
+      // Return formatted response for Bedrock - ensure it matches exactly what Bedrock expects
       return {
         messageVersion: '1.0',
         response: {
@@ -104,8 +106,7 @@ export const handler = async (event: any, context: Context): Promise<any> => {
           httpMethod: event.httpMethod || 'POST',
           httpStatusCode: 200,
           responseBody: {
-            contentType: 'application/json',
-            content: JSON.stringify(responseData)
+            application_json: responseData
           }
         }
       };
