@@ -1,0 +1,57 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "PhoneNumberAPI",
+    "version": "1.0.0",
+    "description": "API for phone number validation"
+  },
+  "paths": {
+    "/number-insight": {
+      "description": "Phone number validation endpoint",
+      "post": {
+        "operationId": "validateNumber",
+        "summary": "Validate a phone number",
+        "description": "Validates a phone number and returns information about it",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["phoneNumber"],
+                "properties": {
+                  "phoneNumber": {
+                    "type": "string",
+                    "description": "Phone number to validate"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "valid": {
+                      "type": "boolean",
+                      "description": "Whether the phone number is valid"
+                    },
+                    "countryCode": {
+                      "type": "string",
+                      "description": "Country code of the phone number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

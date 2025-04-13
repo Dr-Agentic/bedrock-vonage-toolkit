@@ -1,0 +1,136 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "VonageNumberInsightAPI",
+    "version": "1.0.0",
+    "description": "API for validating phone numbers and retrieving carrier information"
+  },
+  "paths": {
+    "/number-insight": {
+      "description": "Endpoint for retrieving detailed information about phone numbers",
+      "post": {
+        "operationId": "getNumberInsight",
+        "summary": "Get detailed information about a phone number",
+        "description": "Retrieves comprehensive information about a phone number including validation, carrier details, and risk assessment",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "phoneNumber"
+                ],
+                "properties": {
+                  "phoneNumber": {
+                    "type": "string",
+                    "description": "Phone number in E.164 format (e.g., +12025550123)"
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "basic",
+                      "standard",
+                      "advanced"
+                    ],
+                    "description": "Level of insight to retrieve",
+                    "default": "standard"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Number insight information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "phoneNumber": {
+                      "type": "string",
+                      "description": "The phone number in international format"
+                    },
+                    "countryName": {
+                      "type": "string",
+                      "description": "The country name"
+                    },
+                    "currentCarrier": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Current carrier name"
+                        },
+                        "country": {
+                          "type": "string",
+                          "description": "Carrier country"
+                        },
+                        "networkType": {
+                          "type": "string",
+                          "description": "Network type (mobile, landline, voip)"
+                        },
+                        "networkCode": {
+                          "type": "string",
+                          "description": "Network code"
+                        }
+                      }
+                    },
+                    "isValid": {
+                      "type": "boolean",
+                      "description": "Whether the phone number is valid"
+                    },
+                    "isReachable": {
+                      "type": "boolean",
+                      "description": "Whether the phone number is reachable"
+                    },
+                    "isPorted": {
+                      "type": "boolean",
+                      "description": "Whether the number has been ported"
+                    },
+                    "isRoaming": {
+                      "type": "boolean",
+                      "description": "Whether the number is roaming"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
