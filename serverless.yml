@@ -47,8 +47,7 @@ custom:
     platform: node
     concurrency: 10
     packager: npm
-    exclude:
-      - aws-sdk
+    # No longer excluding aws-sdk since we're using AWS SDK v3 modules
 
 functions:
   getNumberInsight:
@@ -110,3 +109,44 @@ resources:
             Value: bedrock-vonage-toolkit
           - Key: Environment
             Value: ${opt:stage, 'dev'}
+            
+    # Add Lambda resource policies to allow Bedrock to invoke the functions
+    GetNumberInsightLambdaPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !Ref GetNumberInsightLambdaFunction
+        Action: lambda:InvokeFunction
+        Principal: bedrock.amazonaws.com
+        SourceAccount: !Ref AWS::AccountId
+        
+    SendSmsLambdaPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !Ref SendSmsLambdaFunction
+        Action: lambda:InvokeFunction
+        Principal: bedrock.amazonaws.com
+        SourceAccount: !Ref AWS::AccountId
+        
+    RequestVerificationLambdaPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !Ref RequestVerificationLambdaFunction
+        Action: lambda:InvokeFunction
+        Principal: bedrock.amazonaws.com
+        SourceAccount: !Ref AWS::AccountId
+        
+    CheckVerificationLambdaPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !Ref CheckVerificationLambdaFunction
+        Action: lambda:InvokeFunction
+        Principal: bedrock.amazonaws.com
+        SourceAccount: !Ref AWS::AccountId
+        
+    CancelVerificationLambdaPermission:
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName: !Ref CancelVerificationLambdaFunction
+        Action: lambda:InvokeFunction
+        Principal: bedrock.amazonaws.com
+        SourceAccount: !Ref AWS::AccountId

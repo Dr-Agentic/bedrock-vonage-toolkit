@@ -77,6 +77,20 @@ npm run test:unit
 npm run test:integration
 ```
 
+### Command Line Testing
+
+The project includes scripts for testing the API from the command line:
+
+```bash
+# Test the deployed API endpoint
+node test-direct-api.js
+
+# Test the service directly (requires build)
+npm run build && node test-local.js
+```
+
+See [TESTING.md](TESTING.md) for detailed information about testing options.
+
 ### Deployment
 
 ```bash
@@ -105,6 +119,9 @@ npm run deploy -- --stage prod
 ├── jest.config.js         # Jest configuration
 ├── package.json           # Project dependencies
 ├── serverless.yml         # Serverless configuration
+├── test-direct-api.js     # Script to test deployed API
+├── test-local.js          # Script to test service directly
+├── TESTING.md             # Detailed testing documentation
 └── tsconfig.json          # TypeScript configuration
 ```
 
